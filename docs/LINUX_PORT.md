@@ -95,14 +95,20 @@ L'îlot est une surface Wayland de type layer (`gtk4-layer-shell`), ancrée en h
 transparente aux clics sauf sur la pastille. Il dessine avec Cairo et anime avec de vrais ressorts
 intégrés image par image, pilotés par le frame clock (120 Hz sur cette machine).
 
-Choix de conception :
+L'îlot suit maintenant `docs/DESIGN.md` du projet plutôt que d'improviser :
 
-- géométrie ouverte depuis le bord haut, comme si elle sortait de la barre caméra ;
-- largeur mesurée sur le texte (Pango), bornée à 320 et 520 px ;
-- ressorts à vitesse conservée : un changement d'état retarget le ressort au lieu de repartir de zéro ;
-- entrée chorégraphiée (icône, titre, détail, barre, décalés de 30 ms) ;
-- coche qui se trace, anneau vert qui s'ouvre ;
-- halo teinté par l'état, liseré lumineux en haut, dégradé qui dérive sur 10 s ;
+- palette du système : nuit `#08080A` opaque, texte bone `#F4F3EF`, secondaire `#A2A2A8`, halo `#D6DEFF`,
+  aucune teinte d'accent, succès en bone et non en vert ;
+- Geist et Geist Mono, embarquées dans le binaire et enregistrées dans le processus via fontconfig, sans
+  toucher au dossier de fontes de la personne ;
+- géométrie d'encoche : haut plat contre le bord de l'écran, bas arrondi, 190 x 32 au repos ;
+- anatomie de leur îlot : visuel de tête (anneau de progression), titre 15 semibold, détail 12, pourcentage
+  en mono à droite ;
+- anneau de progression avec piste à 15 %, arc bone, point lumineux à la tête, quart de tour indéterminé
+  quand la taille totale est inconnue ;
+- succès : disque bone, coche encre qui se trace ;
+- ressorts du système : îlot 0,42 s / 0,78, contenu 0,38 s / 0,86, vérifiés à 120 images par seconde ;
+- respect de « réduire les animations » quand GTK le signale ;
 - mises en page Pango en cache, pour ne rien recalculer à 120 images par seconde.
 
 Deux bogues ont été trouvés et corrigés en route, tous les deux visibles à l'usage :

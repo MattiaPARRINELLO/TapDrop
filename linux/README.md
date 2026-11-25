@@ -20,7 +20,7 @@ fonctionne telle quelle : ce programme parle exactement le protocole décrit dan
 | File d'envoi | `tapdrop-linux send`, annoncée sur le lien live du téléphone |
 | Découverte | DNS-SD `_tapdrop._tcp` via avahi, ou répondeur mDNS intégré |
 | Tap | le téléphone posé sur la bosse caméra envoie ce qui est à l'écran |
-| Îlot | pastille animée en haut de l'écran : détection, progression, résultat, codes, consignes |
+| Îlot | pastille animée en haut de l'écran, alignée sur le design system du projet : Geist, palette night/bone, anneau de progression, coche encre sur disque bone, ressorts d'Apple |
 | Barre d'état | icône StatusNotifierItem avec menu, appairages en cours, quitter |
 | Fenêtre | état, téléphones, appairage, réglages (`tapdrop-linux ui`) |
 
@@ -142,7 +142,7 @@ plus souple :
 | `tap.rs` | relie capteurs, caméra et lien live |
 | `iio.rs` | capteur de lumière et de proximité |
 | `camera.rs` | webcam en capteur de lumière, 30 images par seconde |
-| `island.rs` | pastille animée, ressorts, halo, socket d'événements |
+| `island.rs` | pastille animée : forme d'encoche, anneau, coche, ressorts, socket d'événements |
 | `tray.rs` | icône StatusNotifierItem et son menu |
 | `ui.rs` | fenêtre GTK4 |
 | `mdns.rs` | découverte DNS-SD (avahi ou répondeur intégré) |
@@ -151,6 +151,17 @@ plus souple :
 | `files.rs` | noms sûrs, fichiers partiels, pas d'écrasement |
 | `clipboard.rs` | presse-papiers Wayland |
 | `control.rs` | socket de contrôle et client bloquant pour GTK |
+
+## Design
+
+L'îlot suit [`docs/DESIGN.md`](../docs/DESIGN.md) plutôt que d'improviser : nuit `#08080A`, texte bone
+`#F4F3EF`, secondaire `#A2A2A8`, halo `#D6DEFF`, aucune teinte d'accent, géométrie d'encoche (haut plat,
+bas arrondi), anneau de progression en visuel de tête, coche encre sur disque bone pour le succès, et les
+ressorts du système (îlot 0,42 s / 0,78, contenu 0,38 s / 0,86).
+
+Les deux fontes du projet sont embarquées dans le binaire et enregistrées dans le processus au démarrage,
+sans toucher au dossier de fontes de la personne : `fonts/Geist[wght].ttf` et `fonts/GeistMono[wght].ttf`,
+les mêmes fichiers OFL que dans `fonts/` à la racine du dépôt.
 
 ## Limites connues
 
