@@ -1260,11 +1260,15 @@ fn glyph(cr: &cairo::Context, cx: f64, cy: f64, kind: Kind, color: (f64, f64, f6
             let _ = cr.stroke();
         }
         Kind::Link => {
-            // Two links of a chain.
-            cr.arc(cx - 3.0, cy, 4.5, -0.9, 2.2);
+            // Two capsule links crossed at 45°, the way a chain is drawn.
+            let _ = cr.save();
+            cr.translate(cx, cy);
+            cr.rotate(-std::f64::consts::FRAC_PI_4);
+            rounded_rect(cr, -7.5, -3.0, 9.0, 6.0, 3.0);
             let _ = cr.stroke();
-            cr.arc(cx + 3.0, cy, 4.5, 2.2, -0.9 + std::f64::consts::TAU);
+            rounded_rect(cr, -1.5, -3.0, 9.0, 6.0, 3.0);
             let _ = cr.stroke();
+            let _ = cr.restore();
         }
         Kind::Hint | Kind::Error => {
             cr.move_to(cx, cy - 6.5);
