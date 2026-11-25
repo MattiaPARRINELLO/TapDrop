@@ -23,7 +23,17 @@ const NOTCH_WIDTH: f64 = 190.0;
 const NOTCH_HEIGHT: f64 = 32.0;
 const PADDING: f64 = 18.0;
 const RING: f64 = 26.0;
+/// A preview deserves a little more room than the progress ring.
+const THUMB: f64 = 34.0;
 const GAP: f64 = 10.0;
+
+fn leading_size(kind: Kind) -> f64 {
+    if kind == Kind::Done {
+        THUMB
+    } else {
+        RING
+    }
+}
 const HIDE: f64 = 0.30;
 
 // ---- Design tokens, from docs/DESIGN.md -------------------------------------------------------
@@ -305,11 +315,12 @@ impl View {
             Kind::Done => 66.0,
             _ => 46.0,
         };
-        let width = title.max(detail) + PADDING * 2.0 + RING + GAP + trailing;
+        let lead = leading_size(self.kind);
+        let width = title.max(detail) + PADDING * 2.0 + lead + GAP + trailing;
         self.target_width = width.clamp(NOTCH_WIDTH + 60.0, 560.0);
         self.target_height = if self.kind == Kind::Code { PADDING * 2.0 + 40.0 } else { PADDING * 2.0 + 26.0 };
 
-        let inner = (self.target_width - PADDING * 2.0 - RING - GAP - trailing).max(24.0);
+        let inner = (self.target_width - PADDING * 2.0 - lead - GAP - trailing).max(24.0);
         self.layouts.title = Some(make_layout(
             area,
             TEXT_FONT,
@@ -897,7 +908,8 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
     let elapsed = now.duration_since(view.shown_at).as_secs_f64();
 
     let center_y = height / 2.0;
-    let ring_x = x + PADDING + RING / 2.0;
+    let lead = leading_size(view.kind);
+    let ring_x = x + PADDING + lead / 2.0;
     if morph < 0.999 {
         leading(
             cr,
@@ -928,7 +940,7 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
         preview,
     );
 
-    let text_x = x + PADDING + RING + GAP;
+    let text_x = x + PADDING + lead + GAP;
     let text_alpha = alpha * content;
     let detail_color = if view.kind == Kind::Code { BONE } else { SECONDARY };
 
@@ -1034,7 +1046,8 @@ fn leading(
     if alpha <= 0.01 {
         return;
     }
-    let radius = RING / 2.0;
+    let diameter = if kind == Kind::Done { THUMB } else { RING };
+    let radius = diameter / 2.0;
 
     match kind {
         Kind::Detect => {
@@ -1062,13 +1075,13 @@ fn leading(
         Kind::Done => {
             // A photo shows itself; anything else gets a bone disc and an ink check.
             if let Some(thumb) = thumb {
-                draw_thumb(cr, cx - radius, cy - radius, RING, thumb, alpha);
+                draw_thumb(cr, cx - radius, cy - radius, diameter, thumb, alpha);
             } else {
                 let r = radius * (1.0 + 0.02 * hover);
                 cr.set_source_rgba(BONE.0, BONE.1, BONE.2, alpha);
                 cr.arc(cx, cy, r, 0.0, std::f64::consts::TAU);
                 let _ = cr.fill();
-                check(cr, cx, cy, NIGHT, alpha, motion.check.value);
+                check_scaled(cr, cx, cy, NIGHT, alpha, motion.check.value, diameter / 26.0);
             }
         }
         Kind::Code | Kind::Hint | Kind::Error => {
@@ -1134,13 +1147,21 @@ fn ring(
     }
 }
 
-fn check(cr: &cairo::Context, cx: f64, cy: f64, color: (f64, f64, f64), alpha: f64, progress: f64) {
+fn check_scaled(
+    cr: &cairo::Context,
+    cx: f64,
+    cy: f64,
+    color: (f64, f64, f64),
+    alpha: f64,
+    progress: f64,
+    scale: f64,
+) {
     let p = progress.clamp(0.0, 1.0);
-    let (x1, y1) = (cx - 5.5, cy + 0.5);
-    let (x2, y2) = (cx - 1.5, cy + 4.5);
-    let (x3, y3) = (cx + 5.5, cy - 4.0);
+    let (x1, y1) = (cx - 5.5 * scale, cy + 0.5 * scale);
+    let (x2, y2) = (cx - 1.5 * scale, cy + 4.5 * scale);
+    let (x3, y3) = (cx + 5.5 * scale, cy - 4.0 * scale);
     cr.set_source_rgba(color.0, color.1, color.2, alpha);
-    cr.set_line_width(2.0);
+    cr.set_line_width(2.0 * scale);
     cr.set_line_cap(cairo::LineCap::Round);
     cr.set_line_join(cairo::LineJoin::Round);
     cr.move_to(x1, y1);
@@ -1191,7 +1212,8 @@ fn draw_thumb(cr: &cairo::Context, x: f64, y: f64, size: f64, thumb: &Thumb, alp
         return;
     };
     let _ = cr.save();
-    rounded_rect(cr, x, y, size, size, 8.0);
+    let corner = (size * 0.3).min(10.0);
+    rounded_rect(cr, x, y, size, size, corner);
     cr.clip();
     let scale = (size / f64::from(thumb.width)).max(size / f64::from(thumb.height));
     let width = f64::from(thumb.width) * scale;
@@ -1201,7 +1223,7 @@ fn draw_thumb(cr: &cairo::Context, x: f64, y: f64, size: f64, thumb: &Thumb, alp
     let _ = cr.set_source_surface(&surface, 0.0, 0.0);
     let _ = cr.paint_with_alpha(alpha);
     let _ = cr.restore();
-    rounded_rect(cr, x, y, size, size, 8.0);
+    rounded_rect(cr, x, y, size, size, corner);
     cr.set_source_rgba(1.0, 1.0, 1.0, 0.10 * alpha);
     cr.set_line_width(0.7);
     let _ = cr.stroke();
