@@ -12,6 +12,7 @@ mod logging;
 mod mdns;
 mod net;
 mod notify;
+mod open;
 mod server;
 mod store;
 mod tap;
@@ -148,15 +149,25 @@ async fn run(auto_pair: bool) -> Result<()> {
 }
 
 /// The island draws in its own process: GTK wants the main thread, the service needs it for tokio.
+/// It is supervised: if GTK loses its display or the process dies, it comes back two seconds later.
 fn start_island() {
-    let Ok(exe) = std::env::current_exe() else {
-        return;
-    };
-    let _ = std::process::Command::new(exe)
-        .arg("island")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn();
+    std::thread::spawn(move || loop {
+        let child = std::env::current_exe().and_then(|exe| {
+            std::process::Command::new(exe)
+                .arg("island")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+        });
+        match child {
+            Ok(mut child) => {
+                let _ = child.wait();
+                crate::trace_debug!("tapdrop: the island exited, restarting it");
+            }
+            Err(e) => eprintln!("tapdrop: could not start the island: {e}"),
+        }
+        std::thread::sleep(std::time::Duration::from_secs(2));
+    });
 }
 
 /// Feeds the light key from the camera bump, and lets its rounds time out.

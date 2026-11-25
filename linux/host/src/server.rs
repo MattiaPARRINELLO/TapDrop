@@ -391,8 +391,9 @@ impl Host {
         writer
             .send_json(&json!({ "t": "ok", "saved": saved + ocr.len() }))
             .await?;
-        if let Some((code, _, Some(source))) = texts.iter().find(|t| t.2.is_some()) {
-            self.island.code(source, code);
+        let link = texts.iter().find_map(|(text, _, _)| clean_url(text));
+        if let (Some(_), Some(url)) = (link.as_ref(), link.as_deref()) {
+            self.island.link_opened(url);
         }
 
         let open_links = self.store.snapshot().open_links;
@@ -405,13 +406,21 @@ impl Host {
             .unwrap_or_default();
         let summary = match files.len() {
             0 if texts.is_empty() => "Nothing received".to_string(),
-            0 => format!("{} texte(s)", texts.len()),
+            0 => format!("{} text(s)", texts.len()),
             1 => files[0]
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default(),
             n => format!("{n} files"),
         };
+        // Decided before the batch is handed over: the delivery consumes it.
+        let link = texts.iter().find_map(|(text, _, _)| clean_url(text));
+        let code = texts
+            .iter()
+            .find(|t| t.2.is_some())
+            .map(|(text, _, source)| (text.clone(), source.clone().unwrap_or_default()));
+        let first_text = texts.first().map(|(text, _, _)| text.clone());
+
         deliver(
             from,
             &state_name,
@@ -422,11 +431,21 @@ impl Host {
             open_links,
         )
         .await;
-        if !has_otp {
-            self.island.saved(
-                "Saved",
-                &format!("{summary} · {folder_name}"),
-                first.as_deref(),
+
+        if has_otp {
+            if let Some((text, source)) = code {
+                self.island.code(&source, &text);
+            }
+        } else if let Some(url) = link {
+            self.island.link_opened(&url);
+        } else if let Some(path) = first.as_deref() {
+            self.island
+                .saved("Saved", &format!("{summary} · {folder_name}"), Some(path));
+        } else if let Some(text) = first_text {
+            let words = text.split_whitespace().count();
+            self.island.done(
+                &format!("Copied {words} word{}", if words == 1 { "" } else { "s" }),
+                &snippet(text.trim(), 60),
             );
         }
         Ok(())
@@ -665,7 +684,7 @@ async fn deliver(
         let _ = tokio::task::spawn_blocking(move || clipboard::write_text(&value)).await;
         if open_links {
             if let Some(url) = clean_url(text) {
-                let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+                crate::open::url(&url);
                 notes.push(format!("Link opened: {url}"));
                 continue;
             }

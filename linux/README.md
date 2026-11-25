@@ -15,7 +15,7 @@ works unchanged: it speaks exactly the protocol described in the repository's
 | Sessions | AES-256-GCM, implicit counters, replays and reordering refused |
 | Receiving | files, photos, videos, text, one-time codes, clipboard images |
 | Clipboard | both ways, text, image or copied files, through `wl-clipboard` |
-| Links | opened in the browser, with broken URLs cleaned up |
+| Links | opened in Brave, raised to the front, with broken URLs cleaned up |
 | OCR | reads the text of screenshots with `tesseract` |
 | Outbox | `tapdrop-linux send`, announced on the phone's live link |
 | Discovery | DNS-SD `_tapdrop._tcp` through avahi, or a built-in mDNS responder |
@@ -179,6 +179,8 @@ OFL files as `fonts/` at the repository root.
 - **Infrared camera** is useless here: a screen emits no infrared, so the IR camera would only see its
   own illuminator, which makes it behave like a presence sensor.
 - **Webcam LED** lights up during a tap, for about a quarter of a second.
+- Raising the browser after a link needs `kdotool` on KDE Wayland; without it, KWin decides where the
+  focus goes.
 - **Real blur** is not possible yet: the maintained KWin effect stops at Plasma 6.4, and this release
   is 6.8.
 - The official APK still says "Mac": see the Android patch in this repository.

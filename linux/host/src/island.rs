@@ -124,6 +124,8 @@ enum Kind {
     Send,
     Done,
     Code,
+    /// A link opened in the browser.
+    Link,
     /// A gentle instruction about how to tap.
     Hint,
     Error,
@@ -315,7 +317,7 @@ impl View {
         let title = measure_line(area, &self.title, TEXT_FONT, title_size, true, -0.15);
         let detail = measure_line(area, &self.detail, TEXT_FONT, detail_size, false, 0.0);
         let trailing = match self.kind {
-            Kind::Code => 0.0,
+            Kind::Code | Kind::Link => 0.0,
             Kind::Done => 66.0,
             _ => 46.0,
         };
@@ -446,6 +448,21 @@ impl Push {
         }));
     }
 
+    /// A link that just opened: its host under the title, and the URL kept for a click.
+    pub fn link_opened(&self, url: &str) {
+        let host = url
+            .split("://")
+            .nth(1)
+            .unwrap_or(url)
+            .split('/')
+            .next()
+            .unwrap_or(url)
+            .to_string();
+        self.send(json!({
+            "t": "link", "title": "Link opened", "detail": host, "target": url,
+        }));
+    }
+
     pub fn code(&self, source: &str, code: &str) {
         self.send(json!({ "t": "code", "title": source, "detail": code }));
     }
@@ -521,7 +538,7 @@ fn build(app: &gtk::Application) {
     let hovered = Rc::new(Cell::new(false));
     let pointer = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let pill = Rc::new(Cell::new(None::<(i32, i32, i32, i32)>));
-    let target = Rc::new(RefCell::new(None::<PathBuf>));
+    let target = Rc::new(RefCell::new(None::<String>));
     let thumb = Rc::new(RefCell::new(None::<Thumb>));
     let buttons: Buttons = Rc::new(RefCell::new(Vec::new()));
     let thumb_gen = Rc::new(Cell::new(0u64));
@@ -751,7 +768,7 @@ fn listen(sender: std::sync::mpsc::Sender<Value>) {
 fn apply(
     view: &Rc<RefCell<View>>,
     area: &gtk::DrawingArea,
-    target: &Rc<RefCell<Option<PathBuf>>>,
+    target: &Rc<RefCell<Option<String>>>,
     motion: &Rc<RefCell<Motion>>,
     thumb: &Rc<RefCell<Option<Thumb>>>,
     thumb_tx: &std::sync::mpsc::Sender<(u64, Option<Thumb>)>,
@@ -771,7 +788,7 @@ fn apply(
         *target.borrow_mut() = if path.is_empty() {
             None
         } else {
-            Some(PathBuf::from(path))
+            Some(path.to_string())
         };
         // The preview is decoded off the main thread: a phone photo would hitch the animation.
         if !path.is_empty() {
@@ -823,6 +840,11 @@ fn apply(
                 Some(Duration::from_secs(4)),
             );
             motion.borrow_mut().shake.kick(-9.0);
+        }
+        "link" => {
+            let url = value["target"].as_str().unwrap_or_default().to_string();
+            *target.borrow_mut() = if url.is_empty() { None } else { Some(url) };
+            state.show(Kind::Link, title, detail, None, Some(Duration::from_secs(8)));
         }
         "hint" => state.show(
             Kind::Hint,
@@ -1133,7 +1155,7 @@ fn leading(
                 );
             }
         }
-        Kind::Code | Kind::Hint | Kind::Error => {
+        Kind::Link | Kind::Code | Kind::Hint | Kind::Error => {
             let color = match kind {
                 Kind::Hint => WARNING,
                 Kind::Error => DANGER,
@@ -1237,6 +1259,13 @@ fn glyph(cr: &cairo::Context, cx: f64, cy: f64, kind: Kind, color: (f64, f64, f6
             cr.line_to(cx + 7.0, cy + 7.0);
             let _ = cr.stroke();
         }
+        Kind::Link => {
+            // Two links of a chain.
+            cr.arc(cx - 3.0, cy, 4.5, -0.9, 2.2);
+            let _ = cr.stroke();
+            cr.arc(cx + 3.0, cy, 4.5, 2.2, -0.9 + std::f64::consts::TAU);
+            let _ = cr.stroke();
+        }
         Kind::Hint | Kind::Error => {
             cr.move_to(cx, cy - 6.5);
             cr.line_to(cx, cy + 0.5);
@@ -1318,15 +1347,19 @@ fn glyph_action(
     }
 }
 
-fn act_on(act: Act, target: Option<&std::path::Path>) {
-    let path = match act {
-        Act::Open => target.map(|p| p.to_path_buf()),
-        Act::Folder => target
-            .and_then(|p| p.parent().map(|parent| parent.to_path_buf()))
-            .or_else(dirs::download_dir),
-    };
-    if let Some(path) = path {
-        let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+fn act_on(act: Act, target: Option<&str>) {
+    match (act, target) {
+        (Act::Open, Some(value)) if value.starts_with("http") => crate::open::url(value),
+        (Act::Open, Some(path)) => {
+            let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+        }
+        (Act::Folder, Some(path)) => {
+            let parent = std::path::Path::new(path).parent().map(|p| p.to_path_buf());
+            if let Some(parent) = parent.or_else(dirs::download_dir) {
+                let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
+            }
+        }
+        _ => {}
     }
 }
 
@@ -1475,10 +1508,16 @@ fn spring(seconds: f64) -> f64 {
         * ((damped * seconds).cos() + (damping * frequency / damped) * (damped * seconds).sin())
 }
 
-fn open_target(target: Option<&std::path::Path>) {
-    let path = match target {
-        Some(path) => path.to_path_buf(),
-        None => dirs::download_dir().unwrap_or_else(|| PathBuf::from(".")),
-    };
-    let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+fn open_target(target: Option<&str>) {
+    match target {
+        Some(value) if value.starts_with("http") => crate::open::url(value),
+        Some(path) => {
+            let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+        }
+        None => {
+            if let Some(folder) = dirs::download_dir() {
+                let _ = std::process::Command::new("xdg-open").arg(folder).spawn();
+            }
+        }
+    }
 }
