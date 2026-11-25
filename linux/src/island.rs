@@ -435,7 +435,9 @@ fn build(app: &gtk::Application) {
     window.set_anchor(Edge::Top, true);
     window.set_margin(Edge::Top, 0);
     window.set_keyboard_mode(KeyboardMode::None);
-    window.set_exclusive_zone(0);
+    // -1 ignores the panel's exclusive zone: the island sits at the physical top edge, like a notch,
+    // instead of being pushed below the top bar.
+    window.set_exclusive_zone(-1);
     window.set_namespace(Some("tapdrop-island"));
 
     let css = gtk::CssProvider::new();

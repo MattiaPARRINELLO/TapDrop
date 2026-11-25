@@ -159,6 +159,9 @@ L'îlot suit [`docs/DESIGN.md`](../docs/DESIGN.md) plutôt que d'improviser : nu
 bas arrondi), anneau de progression en visuel de tête, coche encre sur disque bone pour le succès, et les
 ressorts du système (îlot 0,42 s / 0,78, contenu 0,38 s / 0,86).
 
+La surface ignore la réserve du panneau (`set_exclusive_zone(-1)`), pour partir du bord physique de
+l'écran comme une vraie encoche, au lieu d'être poussée sous la barre du haut.
+
 Les deux fontes du projet sont embarquées dans le binaire et enregistrées dans le processus au démarrage,
 sans toucher au dossier de fontes de la personne : `fonts/Geist[wght].ttf` et `fonts/GeistMono[wght].ttf`,
 les mêmes fichiers OFL que dans `fonts/` à la racine du dépôt.
