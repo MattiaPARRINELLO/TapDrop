@@ -323,7 +323,12 @@ impl View {
         };
         let lead = leading_size(self.kind);
         let width = title.max(detail) + PADDING * 2.0 + lead + GAP + trailing;
-        self.target_width = width.clamp(NOTCH_WIDTH + 60.0, 560.0);
+        let ceiling = if matches!(self.kind, Kind::Hint | Kind::Error) {
+            660.0
+        } else {
+            560.0
+        };
+        self.target_width = width.clamp(NOTCH_WIDTH + 60.0, ceiling);
         self.target_height = if self.kind == Kind::Code {
             PADDING * 2.0 + 40.0
         } else {
@@ -349,6 +354,18 @@ impl View {
             0.0,
             inner,
         ));
+        // A sentence truncates at its end; a file name in its middle, where the extension lives.
+        let mode = if matches!(self.kind, Kind::Hint | Kind::Error) {
+            pango::EllipsizeMode::End
+        } else {
+            pango::EllipsizeMode::Middle
+        };
+        for layout in [&self.layouts.title, &self.layouts.detail]
+            .into_iter()
+            .flatten()
+        {
+            layout.set_ellipsize(mode);
+        }
         if self.kind != Kind::Code {
             let percent = self
                 .progress
@@ -844,7 +861,13 @@ fn apply(
         "link" => {
             let url = value["target"].as_str().unwrap_or_default().to_string();
             *target.borrow_mut() = if url.is_empty() { None } else { Some(url) };
-            state.show(Kind::Link, title, detail, None, Some(Duration::from_secs(8)));
+            state.show(
+                Kind::Link,
+                title,
+                detail,
+                None,
+                Some(Duration::from_secs(8)),
+            );
         }
         "hint" => state.show(
             Kind::Hint,
@@ -914,22 +937,6 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
     let y = 0.0;
     let radius = height / 2.0;
     pill.set(Some((x as i32, y as i32, width as i32, height as i32)));
-
-    // The glow of a screen's light, heavily blurred behind the island. Halos only.
-    if open > 0.4 {
-        for (spread, strength) in [(16.0, 0.05), (10.0, 0.07), (5.0, 0.09)] {
-            rounded_bottom(
-                cr,
-                x - spread,
-                y,
-                width + 2.0 * spread,
-                height + 2.0 * spread,
-                radius + spread,
-            );
-            cr.set_source_rgba(LIGHT.0, LIGHT.1, LIGHT.2, strength * alpha);
-            let _ = cr.fill();
-        }
-    }
 
     // Night black, opaque: the island must look like hardware, not like a card over the wallpaper.
     rounded_bottom(cr, x, y, width, height, radius);
@@ -1413,6 +1420,8 @@ fn block_heights(layouts: &Layouts) -> (f64, f64) {
 fn sizes_for(kind: Kind) -> (i32, i32) {
     match kind {
         Kind::Code => (10, 20),
+        // A sentence in a small pill reads better one size down.
+        Kind::Hint | Kind::Error => (13, 12),
         _ => (15, 12),
     }
 }
