@@ -1,0 +1,13 @@
+[Unit]
+Description=TapDrop reverse tunnel vers le serveur Oracle
+Documentation=https://github.com/0x1p0/TapDrop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -i "/home/mattia/Bureau/Oracle Server/ssh-key-2026-08-21.key" -R 127.0.0.1:47914:localhost:47913 ubuntu@88.96.58.75
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

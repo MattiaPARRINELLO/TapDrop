@@ -1,0 +1,14 @@
+[Unit]
+Description=TapDrop, hôte Linux (transferts, presse-papiers, îlot)
+After=network-online.target graphical-session.target
+Wants=network-online.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/tapdrop-linux run
+Restart=always
+RestartSec=3
+Slice=app.slice
+
+[Install]
+WantedBy=default.target
