@@ -8,22 +8,8 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-/// What a light sensor gives: lux readings at whatever rate the hardware manages.
-#[derive(Debug, Clone, Copy)]
-pub struct Lux {
-    pub lux: f32,
-    pub at: Instant,
-}
+use tapdrop_protocol::sensors::{Lux, Proximity};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Proximity {
-    /// Nothing within a few centimetres: a person sitting at the desk reads this.
-    Far,
-    /// Something is against the sensor: a phone, a hand, a closed lid. No return signal at all.
-    Near,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub enum Event {
     Light(Lux),
     Prox(Proximity, Instant),

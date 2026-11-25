@@ -113,7 +113,7 @@ fn kind_of(iface: &str, ip: &str) -> &'static str {
     if iface.starts_with("en") || iface.starts_with("eth") {
         return "Ethernet";
     }
-    "Réseau"
+    "Network"
 }
 
 /// Tailscale hands out addresses from 100.64.0.0/10 (the carrier-grade NAT block).

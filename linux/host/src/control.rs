@@ -21,7 +21,7 @@ pub fn socket_path() -> PathBuf {
 pub async fn request(value: &Value) -> Result<Value> {
     let mut stream = UnixStream::connect(socket_path())
         .await
-        .context("le service TapDrop ne tourne pas (lance « tapdrop run »)")?;
+        .context("the TapDrop service is not running (start it with tapdrop run)")?;
     let mut line = serde_json::to_vec(value)?;
     line.push(b'\n');
     stream.write_all(&line).await?;
@@ -35,7 +35,7 @@ pub async fn request(value: &Value) -> Result<Value> {
 pub fn request_blocking(value: &Value) -> Result<Value> {
     use std::io::{BufRead, BufReader, Write};
     let mut stream = std::os::unix::net::UnixStream::connect(socket_path())
-        .context("le service TapDrop ne tourne pas")?;
+        .context("the TapDrop service is not running")?;
     let mut line = serde_json::to_string(value)?;
     line.push('\n');
     stream.write_all(line.as_bytes())?;
@@ -206,7 +206,7 @@ impl Reply {
             "rename" => {
                 let name = request["name"].as_str().unwrap_or_default();
                 if name.trim().is_empty() {
-                    json!({ "ok": false, "error": "nom vide" })
+                    json!({ "ok": false, "error": "empty name" })
                 } else {
                     store.rename(name.trim());
                     json!({ "ok": true })
@@ -219,14 +219,14 @@ impl Reply {
                     store.set_folder(expanded.clone());
                     json!({ "ok": true, "path": expanded })
                 } else {
-                    json!({ "ok": false, "error": "dossier impossible à créer" })
+                    json!({ "ok": false, "error": "cannot create that folder" })
                 }
             }
             "quit" => {
                 self.shutdown.notify_waiters();
                 json!({ "ok": true })
             }
-            other => json!({ "ok": false, "error": format!("commande inconnue : {other}") }),
+            other => json!({ "ok": false, "error": format!("unknown command: {other}") }),
         }
     }
 }

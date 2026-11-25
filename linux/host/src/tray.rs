@@ -30,17 +30,17 @@ pub struct TapTray {
 impl TapTray {
     fn status_line(&self) -> String {
         if let Some((code, device)) = self.pending.first() {
-            return format!("Appairage de {device} : code {code}");
+            return format!("Pairing {device}: code {code}");
         }
         let phones = match self.devices.len() {
-            0 => "aucun téléphone".to_string(),
-            1 => format!("{} appairé", self.devices[0]),
-            n => format!("{n} téléphones appairés"),
+            0 => "no phone".to_string(),
+            1 => format!("{} paired", self.devices[0]),
+            n => format!("{n} phones paired"),
         };
         let tap = if self.notch {
-            "tap prêt"
+            "tap ready"
         } else {
-            "tap indisponible"
+            "tap unavailable"
         };
         format!("{phones} · {tap}")
     }
@@ -76,7 +76,7 @@ impl Tray for TapTray {
         let tx = self.tx.clone();
         let mut items: Vec<MenuItem<Self>> = vec![
             StandardItem {
-                label: "Ouvrir TapDrop".to_string(),
+                label: "Open TapDrop".to_string(),
                 activate: Box::new(move |_| drop(tx.send(Command::OpenUi))),
                 ..Default::default()
             }
@@ -84,7 +84,7 @@ impl Tray for TapTray {
             {
                 let tx = self.tx.clone();
                 StandardItem {
-                    label: "Envoyer le presse-papiers".to_string(),
+                    label: "Send the clipboard".to_string(),
                     activate: Box::new(move |_| drop(tx.send(Command::Clipboard))),
                     ..Default::default()
                 }
@@ -95,7 +95,7 @@ impl Tray for TapTray {
         for (code, device) in &self.pending {
             items.push(
                 StandardItem {
-                    label: format!("Appairage de {device} : {code}"),
+                    label: format!("Pairing {device}: {code}"),
                     enabled: false,
                     ..Default::default()
                 }
@@ -104,7 +104,7 @@ impl Tray for TapTray {
             items.push({
                 let (tx, code) = (self.tx.clone(), code.clone());
                 StandardItem {
-                    label: format!("Accepter {code}"),
+                    label: format!("Accept {code}"),
                     activate: Box::new(move |_| drop(tx.send(Command::Approve(code.clone())))),
                     ..Default::default()
                 }
@@ -113,7 +113,7 @@ impl Tray for TapTray {
             items.push({
                 let (tx, code) = (self.tx.clone(), code.clone());
                 StandardItem {
-                    label: format!("Refuser {code}"),
+                    label: format!("Refuse {code}"),
                     activate: Box::new(move |_| drop(tx.send(Command::Deny(code.clone())))),
                     ..Default::default()
                 }
@@ -125,7 +125,7 @@ impl Tray for TapTray {
         items.push({
             let tx = self.tx.clone();
             StandardItem {
-                label: "Quitter TapDrop".to_string(),
+                label: "Quit TapDrop".to_string(),
                 activate: Box::new(move |_| drop(tx.send(Command::Quit))),
                 ..Default::default()
             }
@@ -156,7 +156,7 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
     let handle = match state.spawn().await {
         Ok(handle) => handle,
         Err(e) => {
-            eprintln!("tapdrop: pas d'icône dans la barre d'état ({e})");
+            eprintln!("tapdrop: no status bar icon ({e})");
             return;
         }
     };
@@ -203,12 +203,12 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
                     .ok();
                 if crate::control::queue_clipboard(&store, snapshot).await {
                     host.announce_inbox().await;
-                    crate::notify::send("TapDrop", "Presse-papiers en file pour le téléphone");
+                    crate::notify::send("TapDrop", "Clipboard queued for the phone");
                 }
             }
             Command::Approve(code) => {
                 if host.pending.approve(&code).await {
-                    crate::notify::send("Appairé", "Le téléphone peut maintenant envoyer");
+                    crate::notify::send("Paired", "The phone can send now");
                 }
             }
             Command::Deny(code) => {

@@ -34,7 +34,7 @@ pub fn advertise(instance: &str, port: u16, id: &str) -> Result<Advertisement> {
     match publish_with_avahi(instance, port, id) {
         Ok(child) => Ok(Advertisement::Avahi(child)),
         Err(e) => {
-            eprintln!("tapdrop: avahi indisponible ({e}), je publie moi-même");
+            eprintln!("tapdrop: avahi unavailable ({e}), publishing myself");
             Ok(Advertisement::Builtin(publish_builtin(instance, port, id)?))
         }
     }

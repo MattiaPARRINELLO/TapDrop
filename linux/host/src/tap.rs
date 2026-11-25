@@ -1,22 +1,24 @@
 //! Ties the sensors, the camera and the live links to the light key.
 
 use crate::camera;
-use crate::iio::{Lux, Proximity};
 use crate::island::Push;
-use crate::lightkey::{Action, LightKey};
 use crate::watch::Hub;
 use serde_json::Value;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tapdrop_protocol::lightkey::{Action, LightKey};
+use tapdrop_protocol::sensors::{Lux, Proximity};
 
 /// What the person should change, in the same words the phone uses.
 fn hint_for(why: &str) -> Option<&'static str> {
     match why {
-        "facing" | "screen-only" => Some("Retourne le téléphone, écran vers la bosse"),
-        "not-seen" | "no-light-sent" => Some("Colle l'écran à plat sur la bosse"),
-        "stayed-lit" | "no-key-off" => Some("Garde le téléphone sur la bosse une seconde de plus"),
-        "busy" | "cooldown" | "late" | "other-phone" => Some("Un instant, réessaie"),
+        "facing" | "screen-only" => {
+            Some("Turn your phone around: its screen goes against the camera")
+        }
+        "not-seen" | "no-light-sent" => Some("Press the screen flat on the camera bar"),
+        "stayed-lit" | "no-key-off" => Some("Keep your phone on the camera bar a moment longer"),
+        "busy" | "cooldown" | "late" | "other-phone" => Some("Just a moment, try again"),
         _ => None,
     }
 }
@@ -98,7 +100,7 @@ impl TapService {
         let (tx, mut rx) = tokio::sync::mpsc::channel(8);
         tokio::task::spawn_blocking(move || {
             if let Err(e) = camera::stream_means(tx) {
-                eprintln!("tapdrop: caméra indisponible : {e:#}");
+                eprintln!("tapdrop: camera unavailable: {e:#}");
             }
         });
         let this = self.clone();

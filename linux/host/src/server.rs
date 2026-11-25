@@ -4,20 +4,20 @@
 //! connection carries one request, except the live link which stays open until the phone goes quiet.
 
 use crate::clipboard::{self, Snapshot};
-use crate::crypto::{session_key, HostKeyPair, PairingSecret};
-use crate::files::{self, IncomingFile};
 use crate::island::Push;
 use crate::notify;
 use crate::store::{now, QueuedItem, Store};
 use crate::tap::TapService;
 use crate::watch::{self, Hub, LiveLink};
-use crate::wire::{FrameIo, Msg, SecureChannel, DIR_HOST_TO_PHONE, DIR_PHONE_TO_HOST};
 use rand::RngCore;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use tapdrop_protocol::crypto::{session_key, HostKeyPair, PairingSecret};
+use tapdrop_protocol::files::{self, IncomingFile};
+use tapdrop_protocol::wire::{FrameIo, Msg, SecureChannel, DIR_HOST_TO_PHONE, DIR_PHONE_TO_HOST};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Mutex};
@@ -170,10 +170,10 @@ impl Host {
         }
         self.store.add_device(&device_id, &device_name, secret.key);
         self.island
-            .done("Appairé", &format!("{device_name} peut envoyer"));
+            .done("Paired", &format!("{device_name} peut envoyer"));
         io.write_json(&json!({ "t": "pair-ok" })).await?;
         notify::send(
-            "Appairé",
+            "Paired",
             &format!("{device_name} peut maintenant envoyer vers {}", state.name),
         );
         Ok(())
@@ -229,7 +229,7 @@ impl Host {
                     .receive_batch(&mut reader, &mut writer, &request, &device.name)
                     .await
                 {
-                    self.island.failed("Transfert interrompu");
+                    self.island.failed("Transfer interrupted");
                     return Err(e);
                 }
             }
@@ -257,8 +257,8 @@ impl Host {
                 self.store.remove_device(&device_id);
                 writer.send_json(&json!({ "t": "ok" })).await?;
                 notify::send(
-                    "Oublié",
-                    &format!("{} a oublié cet ordinateur", device.name),
+                    "Forgotten",
+                    &format!("{} forgot this computer", device.name),
                 );
             }
             other => anyhow::bail!("unknown request {other:?}"),
@@ -375,14 +375,14 @@ impl Host {
         }
 
         crate::trace_debug!(
-            "tapdrop: lot de {from} : {} fichier(s), {} texte(s), {} image(s)",
+            "tapdrop: batch from {from}: {} file(s), {} text(s), {} image(s)",
             files.len(),
             texts.len(),
             ocr.len()
         );
         for (text, _, otp) in &texts {
             crate::trace_debug!(
-                "tapdrop: texte reçu ({}) : {}",
+                "tapdrop: text received ({}) : {}",
                 otp.as_deref().unwrap_or("normal"),
                 text.chars().take(90).collect::<String>()
             );
@@ -404,13 +404,13 @@ impl Host {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
         let summary = match files.len() {
-            0 if texts.is_empty() => "Rien reçu".to_string(),
+            0 if texts.is_empty() => "Nothing received".to_string(),
             0 => format!("{} texte(s)", texts.len()),
             1 => files[0]
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default(),
-            n => format!("{n} fichiers"),
+            n => format!("{n} files"),
         };
         deliver(
             from,
@@ -424,7 +424,7 @@ impl Host {
         .await;
         if !has_otp {
             self.island.saved(
-                "Enregistré",
+                "Saved",
                 &format!("{summary} · {folder_name}"),
                 first.as_deref(),
             );
@@ -494,7 +494,7 @@ impl Host {
         }
         let count = items.len();
         if count > 0 {
-            self.island.sending(to, &format!("{count} élément(s)"));
+            self.island.sending(to, &format!("{count} item(s)"));
         }
         self.send_batch(reader, writer, items, &self.store.snapshot().name)
             .await?;
@@ -502,8 +502,8 @@ impl Host {
         self.store.dequeue(&ids);
         if count > 0 {
             self.island
-                .done("Envoyé", &format!("{count} élément(s) vers {to}"));
-            notify::send("Envoyé", &format!("{count} élément(s) vers {to}"));
+                .done("Sent", &format!("{count} item(s) to {to}"));
+            notify::send("Sent", &format!("{count} item(s) to {to}"));
         }
         Ok(())
     }
@@ -536,7 +536,7 @@ impl Host {
                         .await?;
                     let mut file = tokio::fs::File::open(&path).await?;
                     loop {
-                        let mut buf = vec![0u8; crate::wire::CHUNK];
+                        let mut buf = vec![0u8; tapdrop_protocol::wire::CHUNK];
                         let n = tokio::io::AsyncReadExt::read(&mut file, &mut buf).await?;
                         if n == 0 {
                             break;
@@ -648,7 +648,7 @@ async fn deliver(
             let text = code.clone();
             let source = source.clone();
             let _ = tokio::task::spawn_blocking(move || clipboard::write_text(&text)).await;
-            notify::send(&format!("Code {source}"), "Copié, prêt à coller");
+            notify::send(&format!("Code {source}"), "Copied, ready to paste");
             return;
         }
     }
@@ -656,7 +656,7 @@ async fn deliver(
     if let Some(image) = clip_images.first() {
         if let Ok(bytes) = tokio::fs::read(image).await {
             let _ = tokio::task::spawn_blocking(move || clipboard::write_image(&bytes)).await;
-            notes.push("Image copiée".to_string());
+            notes.push("Image copied".to_string());
         }
     }
 
@@ -666,11 +666,11 @@ async fn deliver(
         if open_links {
             if let Some(url) = clean_url(text) {
                 let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
-                notes.push(format!("Lien ouvert : {url}"));
+                notes.push(format!("Link opened: {url}"));
                 continue;
             }
         }
-        notes.push(format!("Texte copié : {}", snippet(text.trim(), 60)));
+        notes.push(format!("Text copied: {}", snippet(text.trim(), 60)));
     }
 
     for image in &ocr {
@@ -684,7 +684,7 @@ async fn deliver(
                 if let Ok(bytes) = tokio::fs::read(image).await {
                     let _ =
                         tokio::task::spawn_blocking(move || clipboard::write_image(&bytes)).await;
-                    notes.push("Image copiée".to_string());
+                    notes.push("Image copied".to_string());
                 }
             }
         }
@@ -697,15 +697,15 @@ async fn deliver(
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default()
         } else {
-            format!("{} fichiers", files.len())
+            format!("{} files", files.len())
         };
         notes.insert(0, summary);
     }
 
     if notes.is_empty() {
-        notify::send("Rien reçu", &format!("Rien d'exploitable de {from}"));
+        notify::send("Nothing received", &format!("Nothing usable from {from}"));
     } else {
-        notify::send(&format!("Reçu de {from}"), &notes.join(" · "));
+        notify::send(&format!("Received from {from}"), &notes.join(" · "));
     }
     let _ = host_name;
 }

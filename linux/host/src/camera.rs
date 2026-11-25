@@ -75,7 +75,7 @@ fn set_control(device: &mut Device, id: u32, value: i64) {
         value: Value::Integer(value),
     };
     if let Err(e) = device.set_control(control) {
-        eprintln!("tapdrop: réglage caméra {id:#x} refusé : {e}");
+        eprintln!("tapdrop: camera control {id:#x} refused: {e}");
     }
 }
 

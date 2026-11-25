@@ -1,0 +1,30 @@
+[package]
+name = "tapdrop-host"
+version = "0.1.0"
+edition = "2021"
+description = "The Linux host of TapDrop: pairing, transfers, clipboard, taps and the island"
+license = "MIT"
+repository = "https://github.com/MattiaPARRINELLO/TapDrop"
+
+[[bin]]
+name = "tapdrop-linux"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+dirs = "6"
+gtk4 = "0.11.5"
+gtk4-layer-shell = "0.9.0"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+ksni = { version = "0.3.7", features = ["tokio"] }
+mdns-sd = "0.13"
+pangocairo = "0.22.9"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tapdrop-protocol = { path = "../protocol" }
+tokio = { version = "1", features = ["full"] }
+toml = "0.9"
+uuid = { version = "1", features = ["v4"] }
+v4l = "0.14"

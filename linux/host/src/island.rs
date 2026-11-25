@@ -52,8 +52,8 @@ const DANGER: (f64, f64, f64) = (1.0, 0.478, 0.447);
 const TEXT_FONT: &str = "Geist";
 const MONO_FONT: &str = "Geist Mono";
 
-const GEIST: &[u8] = include_bytes!("../fonts/Geist[wght].ttf");
-const GEIST_MONO: &[u8] = include_bytes!("../fonts/GeistMono[wght].ttf");
+const GEIST: &[u8] = include_bytes!("../../fonts/Geist[wght].ttf");
+const GEIST_MONO: &[u8] = include_bytes!("../../fonts/GeistMono[wght].ttf");
 
 #[link(name = "fontconfig")]
 extern "C" {
@@ -99,7 +99,11 @@ fn load_thumb(path: &std::path::Path) -> Option<Thumb> {
     for pixel in image.pixels() {
         data.extend_from_slice(&[pixel[2], pixel[1], pixel[0], 255]);
     }
-    Some(Thumb { width: width as i32, height: height as i32, data })
+    Some(Thumb {
+        width: width as i32,
+        height: height as i32,
+        data,
+    })
 }
 
 /// What a click on one of the island's buttons does.
@@ -318,7 +322,11 @@ impl View {
         let lead = leading_size(self.kind);
         let width = title.max(detail) + PADDING * 2.0 + lead + GAP + trailing;
         self.target_width = width.clamp(NOTCH_WIDTH + 60.0, 560.0);
-        self.target_height = if self.kind == Kind::Code { PADDING * 2.0 + 40.0 } else { PADDING * 2.0 + 26.0 };
+        self.target_height = if self.kind == Kind::Code {
+            PADDING * 2.0 + 40.0
+        } else {
+            PADDING * 2.0 + 26.0
+        };
 
         let inner = (self.target_width - PADDING * 2.0 - lead - GAP - trailing).max(24.0);
         self.layouts.title = Some(make_layout(
@@ -414,7 +422,7 @@ impl Push {
     }
 
     pub fn receiving(&self, from: &str, what: &str) {
-        self.send(json!({ "t": "recv", "title": format!("Reçu de {from}"), "detail": what }));
+        self.send(json!({ "t": "recv", "title": format!("Received from {from}"), "detail": what }));
     }
 
     pub fn progress(&self, done: u64, total: u64, what: &str) {
@@ -422,7 +430,7 @@ impl Push {
     }
 
     pub fn sending(&self, to: &str, what: &str) {
-        self.send(json!({ "t": "send", "title": format!("Envoi vers {to}"), "detail": what }));
+        self.send(json!({ "t": "send", "title": format!("Sending to {to}"), "detail": what }));
     }
 
     pub fn done(&self, title: &str, detail: &str) {
@@ -431,7 +439,7 @@ impl Push {
 
     /// The same, with the file a click on the island should open.
     pub fn saved(&self, title: &str, detail: &str, target: Option<&std::path::Path>) {
-        crate::trace_debug!("tapdrop: îlot -> {title} ({detail})");
+        crate::trace_debug!("tapdrop: island -> {title} ({detail})");
         self.send(json!({
             "t": "done", "title": title, "detail": detail,
             "target": target.map(|p| p.display().to_string()).unwrap_or_default(),
@@ -443,7 +451,7 @@ impl Push {
     }
 
     pub fn failed(&self, what: &str) {
-        self.send(json!({ "t": "error", "title": "Échec", "detail": what }));
+        self.send(json!({ "t": "error", "title": "Failed", "detail": what }));
     }
 
     pub fn hint(&self, text: &str) {
@@ -506,7 +514,9 @@ fn build(app: &gtk::Application) {
     let motion = Rc::new(RefCell::new(Motion::new()));
     {
         let mut state = motion.borrow_mut();
-        state.reduce = !gtk::Settings::default().map(|s| s.is_gtk_enable_animations()).unwrap_or(true);
+        state.reduce = !gtk::Settings::default()
+            .map(|s| s.is_gtk_enable_animations())
+            .unwrap_or(true);
     }
     let hovered = Rc::new(Cell::new(false));
     let pointer = Rc::new(Cell::new((0.0f64, 0.0f64)));
@@ -581,7 +591,8 @@ fn build(app: &gtk::Application) {
         let (pill, target, buttons) = (pill.clone(), target.clone(), buttons.clone());
         move |_, _, x, y| {
             for (rect, act) in buttons.borrow().iter() {
-                let hit = x >= rect.0 && x <= rect.0 + rect.2 && y >= rect.1 && y <= rect.1 + rect.3;
+                let hit =
+                    x >= rect.0 && x <= rect.0 + rect.2 && y >= rect.1 && y <= rect.1 + rect.3;
                 if hit {
                     act_on(*act, target.borrow().as_deref());
                     return;
@@ -615,7 +626,9 @@ fn build(app: &gtk::Application) {
         let thumb_gen = thumb_gen.clone();
         move || {
             while let Ok(value) = receiver.try_recv() {
-                apply(&view, &area, &target, &motion, &thumb, &thumb_tx, &thumb_gen, &value);
+                apply(
+                    &view, &area, &target, &motion, &thumb, &thumb_tx, &thumb_gen, &value,
+                );
             }
             while let Ok((generation, decoded)) = thumb_rx.try_recv() {
                 if generation == thumb_gen.get() {
@@ -715,7 +728,7 @@ fn listen(sender: std::sync::mpsc::Sender<Value>) {
         let _ = std::fs::create_dir_all(parent);
     }
     let Ok(socket) = std::os::unix::net::UnixDatagram::bind(&path) else {
-        eprintln!("tapdrop: l'îlot ne peut pas écouter sur {}", path.display());
+        eprintln!("tapdrop: the island cannot listen on {}", path.display());
         return;
     };
     std::thread::spawn(move || {
@@ -845,7 +858,14 @@ struct Scene<'a> {
 }
 
 fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
-    let Scene { view, motion, pill, pointer, thumb, buttons } = scene;
+    let Scene {
+        view,
+        motion,
+        pill,
+        pointer,
+        thumb,
+        buttons,
+    } = scene;
     let pointer = *pointer;
     let _ = area;
     let open = motion.open.value;
@@ -925,7 +945,11 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
             None,
         );
     }
-    let preview = if view.kind == Kind::Done { thumb.as_ref() } else { None };
+    let preview = if view.kind == Kind::Done {
+        thumb.as_ref()
+    } else {
+        None
+    };
     leading(
         cr,
         ring_x,
@@ -942,7 +966,11 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
 
     let text_x = x + PADDING + lead + GAP;
     let text_alpha = alpha * content;
-    let detail_color = if view.kind == Kind::Code { BONE } else { SECONDARY };
+    let detail_color = if view.kind == Kind::Code {
+        BONE
+    } else {
+        SECONDARY
+    };
 
     // The two lines are measured and centred as a block, on the ring's own axis, so nothing sits
     // high or low depending on the font's ascent.
@@ -960,7 +988,14 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
         let prev_block = prev_title_height + prev_gap + prev_detail_height;
         let prev_top = ((height - prev_block) / 2.0).max(6.0);
         if let (Some(title), Some(detail)) = (&view.layouts.prev_title, &view.layouts.prev_detail) {
-            draw_layout(cr, title, text_x, prev_top, BONE, text_alpha * (1.0 - morph));
+            draw_layout(
+                cr,
+                title,
+                text_x,
+                prev_top,
+                BONE,
+                text_alpha * (1.0 - morph),
+            );
             draw_layout(
                 cr,
                 detail,
@@ -973,7 +1008,14 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
     }
     if let (Some(title), Some(detail)) = (&view.layouts.title, &view.layouts.detail) {
         draw_layout(cr, title, text_x, title_y, BONE, text_alpha * morph);
-        draw_layout(cr, detail, text_x, detail_y, detail_color, text_alpha * morph);
+        draw_layout(
+            cr,
+            detail,
+            text_x,
+            detail_y,
+            detail_color,
+            text_alpha * morph,
+        );
     }
 
     // The trailing number sits on the title's baseline, not floating in a corner.
@@ -995,12 +1037,20 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
         let folder = (x + width - PADDING - 13.0, center_y);
         let open = (folder.0 - 32.0, center_y);
         for (center, act, glyph) in [(open, Act::Open, 0), (folder, Act::Folder, 1)] {
-            let hovered = (pointer.0 - center.0).powi(2) + (pointer.1 - center.1).powi(2) < 13.0 * 13.0;
-            cr.set_source_rgba(1.0, 1.0, 1.0, (if hovered { 0.14 } else { 0.06 }) * alpha * content);
+            let hovered =
+                (pointer.0 - center.0).powi(2) + (pointer.1 - center.1).powi(2) < 13.0 * 13.0;
+            cr.set_source_rgba(
+                1.0,
+                1.0,
+                1.0,
+                (if hovered { 0.14 } else { 0.06 }) * alpha * content,
+            );
             cr.arc(center.0, center.1, 13.0, 0.0, std::f64::consts::TAU);
             let _ = cr.fill();
             glyph_action(cr, center.0, center.1, glyph, BONE, alpha * content * 0.9);
-            buttons.borrow_mut().push(((center.0 - 13.0, center.1 - 13.0, 26.0, 26.0), act));
+            buttons
+                .borrow_mut()
+                .push(((center.0 - 13.0, center.1 - 13.0, 26.0, 26.0), act));
         }
     }
 
@@ -1061,16 +1111,7 @@ fn leading(
             let _ = cr.fill();
         }
         Kind::Receive | Kind::Send => {
-            ring(
-                cr,
-                cx,
-                cy,
-                radius,
-                3.5,
-                alpha,
-                progress,
-                motion,
-            );
+            ring(cr, cx, cy, radius, 3.5, alpha, progress, motion);
         }
         Kind::Done => {
             // A photo shows itself; anything else gets a bone disc and an ink check.
@@ -1081,7 +1122,15 @@ fn leading(
                 cr.set_source_rgba(BONE.0, BONE.1, BONE.2, alpha);
                 cr.arc(cx, cy, r, 0.0, std::f64::consts::TAU);
                 let _ = cr.fill();
-                check_scaled(cr, cx, cy, NIGHT, alpha, motion.check.value, diameter / 26.0);
+                check_scaled(
+                    cr,
+                    cx,
+                    cy,
+                    NIGHT,
+                    alpha,
+                    motion.check.value,
+                    diameter / 26.0,
+                );
             }
         }
         Kind::Code | Kind::Hint | Kind::Error => {
@@ -1229,7 +1278,14 @@ fn draw_thumb(cr: &cairo::Context, x: f64, y: f64, size: f64, thumb: &Thumb, alp
     let _ = cr.stroke();
 }
 
-fn glyph_action(cr: &cairo::Context, cx: f64, cy: f64, which: u8, color: (f64, f64, f64), alpha: f64) {
+fn glyph_action(
+    cr: &cairo::Context,
+    cx: f64,
+    cy: f64,
+    which: u8,
+    color: (f64, f64, f64),
+    alpha: f64,
+) {
     cr.set_source_rgba(color.0, color.1, color.2, alpha);
     cr.set_line_width(1.6);
     cr.set_line_cap(cairo::LineCap::Round);
@@ -1278,9 +1334,27 @@ fn rounded_rect(cr: &cairo::Context, x: f64, y: f64, width: f64, height: f64, ra
     let r = radius.min(width / 2.0).min(height / 2.0);
     cr.new_sub_path();
     cr.arc(x + width - r, y + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
-    cr.arc(x + width - r, y + height - r, r, 0.0, std::f64::consts::FRAC_PI_2);
-    cr.arc(x + r, y + height - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
-    cr.arc(x + r, y + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
+    cr.arc(
+        x + width - r,
+        y + height - r,
+        r,
+        0.0,
+        std::f64::consts::FRAC_PI_2,
+    );
+    cr.arc(
+        x + r,
+        y + height - r,
+        r,
+        std::f64::consts::FRAC_PI_2,
+        std::f64::consts::PI,
+    );
+    cr.arc(
+        x + r,
+        y + r,
+        r,
+        std::f64::consts::PI,
+        3.0 * std::f64::consts::FRAC_PI_2,
+    );
     cr.close_path();
 }
 
@@ -1293,7 +1367,10 @@ fn layout_height(layout: &Option<pango::Layout>) -> f64 {
 }
 
 fn block_heights(layouts: &Layouts) -> (f64, f64) {
-    (layout_height(&layouts.title), layout_height(&layouts.detail))
+    (
+        layout_height(&layouts.title),
+        layout_height(&layouts.detail),
+    )
 }
 
 fn sizes_for(kind: Kind) -> (i32, i32) {

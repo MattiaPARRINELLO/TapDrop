@@ -12,7 +12,7 @@
 //! by this hardware, so the windows are seconds, not the 450 ms of the original Mac implementation;
 //! the phone's own limits (1.3 s of white, 1.6 s of black) still fit.
 
-use crate::iio::{Lux, Proximity};
+use crate::sensors::{Lux, Proximity};
 use serde_json::{json, Value};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -75,6 +75,12 @@ pub struct LightKey {
     next_id: u32,
     samples: HashMap<String, VecDeque<f32>>,
     prox: Proximity,
+}
+
+impl Default for LightKey {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LightKey {

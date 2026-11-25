@@ -4,14 +4,14 @@
 //! has for the phone (its queue, and later a light-key round). One phone has one live link, so a new
 //! one replaces the old and grabs never go down a stale connection.
 
-use crate::lightkey::Candidate;
 use crate::store::Store;
 use crate::tap::TapService;
-use crate::wire::{Msg, SecureChannel};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 use std::sync::Arc;
+use tapdrop_protocol::lightkey::Candidate;
+use tapdrop_protocol::wire::{Msg, SecureChannel};
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::Mutex;

@@ -42,17 +42,17 @@ fn build(app: &gtk::Application) {
     status.set_markup("<b>Connexion…</b>");
     content.append(&status);
 
-    content.append(&section("Téléphones"));
+    content.append(&section("Phones"));
     let devices = gtk::Box::new(gtk::Orientation::Vertical, 6);
     content.append(&devices);
 
-    content.append(&section("Appairage"));
+    content.append(&section("Pairing"));
     let pairing = gtk::Box::new(gtk::Orientation::Vertical, 6);
     content.append(&pairing);
 
-    content.append(&section("Adresse pour le téléphone"));
+    content.append(&section("Address for the phone"));
     let address_hint = gtk::Label::new(Some(
-        "Hors du même Wi-Fi : Tailscale sur les deux appareils, puis cette adresse dans TapDrop → Edit address.",
+        "Away from the same Wi-Fi: Tailscale on both devices, then this address in TapDrop → Edit address.",
     ));
     address_hint.set_xalign(0.0);
     address_hint.set_wrap(true);
@@ -61,12 +61,12 @@ fn build(app: &gtk::Application) {
     let addresses = gtk::Box::new(gtk::Orientation::Vertical, 4);
     content.append(&addresses);
 
-    content.append(&section("Réglages"));
+    content.append(&section("Settings"));
 
     let name_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let name_entry = gtk::Entry::new();
     name_entry.set_hexpand(true);
-    let rename = gtk::Button::with_label("Renommer");
+    let rename = gtk::Button::with_label("Rename");
     name_row.append(&name_entry);
     name_row.append(&rename);
     content.append(&name_row);
@@ -76,13 +76,13 @@ fn build(app: &gtk::Application) {
     folder_label.set_xalign(0.0);
     folder_label.set_hexpand(true);
     folder_label.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-    let folder_button = gtk::Button::with_label("Changer…");
+    let folder_button = gtk::Button::with_label("Change…");
     folder_row.append(&folder_label);
     folder_row.append(&folder_button);
     content.append(&folder_row);
 
     let links_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let links_label = gtk::Label::new(Some("Ouvrir les liens dans le navigateur"));
+    let links_label = gtk::Label::new(Some("Open links in the browser"));
     links_label.set_xalign(0.0);
     links_label.set_hexpand(true);
     let links_switch = gtk::Switch::new();
@@ -99,8 +99,8 @@ fn build(app: &gtk::Application) {
     footer.set_margin_bottom(10);
     footer.set_margin_start(18);
     footer.set_margin_end(18);
-    let clipboard = gtk::Button::with_label("Envoyer le presse-papiers");
-    let quit = gtk::Button::with_label("Quitter TapDrop");
+    let clipboard = gtk::Button::with_label("Send the clipboard");
+    let quit = gtk::Button::with_label("Quit TapDrop");
     quit.add_css_class("destructive-action");
     footer.append(&clipboard);
     footer.append(&quit);
@@ -120,10 +120,10 @@ fn build(app: &gtk::Application) {
                 if v["queued"].as_bool().unwrap_or(false)
                     || v["queued"].as_u64().unwrap_or(0) > 0 =>
             {
-                button.set_label("Envoyé au téléphone");
+                button.set_label("Sent to the phone");
             }
-            Ok(_) => button.set_label("Presse-papiers vide"),
-            Err(_) => button.set_label("Service injoignable"),
+            Ok(_) => button.set_label("Clipboard is empty"),
+            Err(_) => button.set_label("Service unreachable"),
         }
     });
 
@@ -149,7 +149,7 @@ fn build(app: &gtk::Application) {
         let label = folder_label.clone();
         move |_| {
             let chooser = gtk::FileChooserNative::builder()
-                .title("Dossier de réception")
+                .title("Save folder")
                 .action(gtk::FileChooserAction::SelectFolder)
                 .transient_for(&window)
                 .build();
@@ -180,16 +180,16 @@ fn build(app: &gtk::Application) {
         move || {
             let Ok(state) = control::request_blocking(&json!({ "cmd": "status" })) else {
                 status.set_markup(
-                    "<b>Service arrêté</b>\nLance « tapdrop-linux run » dans un terminal.",
+                    "<b>Service stopped</b>\nStart it with tapdrop-linux run in a terminal.",
                 );
                 return;
             };
             let name = state["name"].as_str().unwrap_or("?");
             let port = state["port"].as_u64().unwrap_or(0);
             let tap = if state["notch"].as_bool().unwrap_or(false) {
-                "tap prêt"
+                "tap ready"
             } else {
-                "tap indisponible"
+                "tap unavailable"
             };
             status.set_markup(&format!("<b>{name}</b>, port {port}\n{tap}"));
 
@@ -198,7 +198,7 @@ fn build(app: &gtk::Application) {
             }
             let list = state["devices"].as_array().cloned().unwrap_or_default();
             if list.is_empty() {
-                devices.append(&hint("Aucun téléphone appairé pour l'instant."));
+                devices.append(&hint("No phone paired yet."));
             }
             for device in list {
                 devices.append(&device_row(&device));
@@ -209,7 +209,7 @@ fn build(app: &gtk::Application) {
             }
             let list = state["addresses"].as_array().cloned().unwrap_or_default();
             if list.is_empty() {
-                addresses.append(&hint("Aucune adresse réseau."));
+                addresses.append(&hint("No network address."));
             }
             for address in list {
                 addresses.append(&address_row(&address));
@@ -220,7 +220,7 @@ fn build(app: &gtk::Application) {
             }
             let pending = state["pending"].as_array().cloned().unwrap_or_default();
             if pending.is_empty() {
-                pairing.append(&hint("Rien en attente."));
+                pairing.append(&hint("Nothing waiting."));
             }
             for request in pending {
                 pairing.append(&pairing_row(&request));
@@ -260,10 +260,10 @@ fn hint(text: &str) -> gtk::Label {
 
 fn device_row(device: &Value) -> gtk::Widget {
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let name = gtk::Label::new(Some(device["name"].as_str().unwrap_or("Téléphone")));
+    let name = gtk::Label::new(Some(device["name"].as_str().unwrap_or("Phone")));
     name.set_xalign(0.0);
     name.set_hexpand(true);
-    let forget = gtk::Button::with_label("Oublier");
+    let forget = gtk::Button::with_label("Forget");
     forget.add_css_class("flat");
     let id = device["id"].as_str().unwrap_or_default().to_string();
     forget.connect_clicked(move |_| {
@@ -280,7 +280,7 @@ fn address_row(address: &Value) -> gtk::Widget {
     let label = gtk::Label::new(Some(&format!(
         "{}  ·  {}",
         endpoint,
-        address["kind"].as_str().unwrap_or("réseau")
+        address["kind"].as_str().unwrap_or("network")
     )));
     label.set_xalign(0.0);
     label.set_hexpand(true);
@@ -298,15 +298,15 @@ fn address_row(address: &Value) -> gtk::Widget {
 fn pairing_row(request: &Value) -> gtk::Widget {
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let text = gtk::Label::new(Some(&format!(
-        "{} demande le code {}",
-        request["device"].as_str().unwrap_or("Un téléphone"),
+        "{} is asking for code {}",
+        request["device"].as_str().unwrap_or("A phone"),
         request["code"].as_str().unwrap_or("?")
     )));
     text.set_xalign(0.0);
     text.set_hexpand(true);
 
     let code = request["code"].as_str().unwrap_or_default().to_string();
-    let accept = gtk::Button::with_label("Accepter");
+    let accept = gtk::Button::with_label("Accept");
     accept.add_css_class("suggested-action");
     accept.connect_clicked({
         let code = code.clone();
@@ -314,7 +314,7 @@ fn pairing_row(request: &Value) -> gtk::Widget {
             let _ = control::request_blocking(&json!({ "cmd": "approve", "code": code }));
         }
     });
-    let refuse = gtk::Button::with_label("Refuser");
+    let refuse = gtk::Button::with_label("Refuse");
     refuse.connect_clicked(move |_| {
         let _ = control::request_blocking(&json!({ "cmd": "deny", "code": code }));
     });

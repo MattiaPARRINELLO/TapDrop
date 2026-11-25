@@ -6,11 +6,8 @@
 mod camera;
 mod clipboard;
 mod control;
-mod crypto;
-mod files;
 mod iio;
 mod island;
-mod lightkey;
 mod logging;
 mod mdns;
 mod net;
@@ -21,7 +18,6 @@ mod tap;
 mod tray;
 mod ui;
 mod watch;
-mod wire;
 
 use anyhow::Result;
 use serde_json::{json, Value};
@@ -69,7 +65,7 @@ async fn dispatch(args: Vec<String>, auto_pair: bool) -> Result<()> {
         }
         Some("help" | "--help" | "-h") => help(),
         Some(other) => {
-            eprintln!("commande inconnue : {other}");
+            eprintln!("unknown command: {other}");
             help();
         }
     }
@@ -116,27 +112,23 @@ async fn run(auto_pair: bool) -> Result<()> {
     tokio::spawn(tray::start(host.clone(), store.clone(), shutdown.clone()));
 
     println!(
-        "TapDrop écoute sur le port {port}, visible comme « {} ».",
+        "TapDrop listening on port {port}, visible as “{}”.",
         state.name
     );
     if hub.notch {
         if tap.uses_camera() {
-            println!(
-                "Tap disponible : la webcam sert de capteur (sa LED s'allume pendant un tap)."
-            );
+            println!("Tap ready: the webcam is the light sensor (its LED lights up during a tap).");
         } else {
-            println!(
-                "Tap disponible via le capteur de lumière (une mesure par seconde, moins fiable)."
-            );
+            println!("Tap ready through the light sensor (one reading a second, less reliable).");
         }
     } else {
-        println!("Pas de capteur de lumière : partage seulement, le tap est indisponible.");
+        println!("No light sensor: sharing only, tapping is unavailable.");
     }
     if state.devices.is_empty() {
-        println!("Aucun téléphone appairé : ouvre TapDrop sur Android et choisis cet ordinateur.");
+        println!("No phone paired: open TapDrop on Android and choose this computer.");
     } else {
         println!(
-            "Appairé : {}.",
+            "Paired: {}.",
             state
                 .devices
                 .iter()
@@ -151,7 +143,7 @@ async fn run(auto_pair: bool) -> Result<()> {
         _ = shutdown.notified() => {},
     }
     island.quit();
-    println!("TapDrop s'arrête.");
+    println!("TapDrop stopping.");
     Ok(())
 }
 
@@ -205,15 +197,15 @@ async fn show_status() {
     let Some(status) = call(json!({ "cmd": "status" })).await else {
         return;
     };
-    println!("Nom     : {}", status["name"].as_str().unwrap_or("?"));
+    println!("Name    : {}", status["name"].as_str().unwrap_or("?"));
     println!("Port    : {}", status["port"]);
     println!(
-        "Dossier : {}",
+        "Folder  : {}",
         status["save_folder"].as_str().unwrap_or("?")
     );
-    println!("File    : {} élément(s)", status["outbox"]);
+    println!("Queue   : {} item(s)", status["outbox"]);
     println!(
-        "Appairés: {}",
+        "Paired  : {}",
         status["devices"].as_array().map(|a| a.len()).unwrap_or(0)
     );
     for device in status["devices"].as_array().cloned().unwrap_or_default() {
@@ -222,14 +214,14 @@ async fn show_status() {
             device["name"].as_str().unwrap_or("?"),
             device["id"].as_str().unwrap_or("?"),
             match device["live"].as_bool() {
-                Some(true) => ", en ligne",
+                Some(true) => ", online",
                 _ => "",
             }
         );
     }
     for address in status["addresses"].as_array().cloned().unwrap_or_default() {
         println!(
-            "Adresse : {}  ({}, {})",
+            "Address : {}  ({}, {})",
             address["endpoint"].as_str().unwrap_or("?"),
             address["kind"].as_str().unwrap_or("?"),
             address["iface"].as_str().unwrap_or("?")
@@ -237,7 +229,7 @@ async fn show_status() {
     }
     for pending in status["pending"].as_array().cloned().unwrap_or_default() {
         println!(
-            "Appairage en attente : {} demande le code {}",
+            "Pairing waiting: {} is asking for code {}",
             pending["device"].as_str().unwrap_or("?"),
             pending["code"].as_str().unwrap_or("?")
         );
@@ -262,12 +254,12 @@ async fn send(paths: &[String]) -> Option<Value> {
         .collect();
     let wants_clipboard = std::env::args().any(|a| a == "--clipboard");
     if paths.is_empty() && !wants_clipboard {
-        eprintln!("usage : tapdrop send <fichier…> [--clipboard]");
+        eprintln!("usage: tapdrop send <file…> [--clipboard]");
         return None;
     }
     let answer =
         call(json!({ "cmd": "send", "paths": paths, "clipboard": wants_clipboard })).await?;
-    println!("{} élément(s) en file pour le téléphone.", answer["queued"]);
+    println!("{} item(s) queued for the phone.", answer["queued"]);
     Some(answer)
 }
 
@@ -277,11 +269,11 @@ async fn list_pending() {
     };
     let pending = answer["pending"].as_array().cloned().unwrap_or_default();
     if pending.is_empty() {
-        println!("Aucun appairage en attente.");
+        println!("No pairing waiting.");
     }
     for p in pending {
         println!(
-            "{} demande le code {}",
+            "{} is asking for code {}",
             p["device"].as_str().unwrap_or("?"),
             p["code"].as_str().unwrap_or("?")
         );
@@ -290,16 +282,16 @@ async fn list_pending() {
 
 async fn decide(command: &str, args: &[String]) {
     let Some(code) = args.first() else {
-        eprintln!("usage : tapdrop {command} <code>");
+        eprintln!("usage: tapdrop {command} <code>");
         return;
     };
     let Some(answer) = call(json!({ "cmd": command, "code": code })).await else {
         return;
     };
     if answer["ok"].as_bool().unwrap_or(false) {
-        println!("Fait.");
+        println!("Done.");
     } else {
-        println!("Aucun appairage avec ce code.");
+        println!("No pairing with that code.");
     }
 }
 
@@ -309,7 +301,7 @@ async fn list_devices() {
     };
     let devices = answer["devices"].as_array().cloned().unwrap_or_default();
     if devices.is_empty() {
-        println!("Aucun téléphone appairé.");
+        println!("No phone paired.");
     }
     for d in devices {
         println!(
@@ -322,7 +314,7 @@ async fn list_devices() {
 
 async fn rename(args: &[String]) {
     let Some(name) = args.first() else {
-        eprintln!("usage : tapdrop rename <nom>");
+        eprintln!("usage: tapdrop rename <name>");
         return;
     };
     let Some(answer) = call(json!({ "cmd": "rename", "name": name })).await else {
@@ -331,16 +323,16 @@ async fn rename(args: &[String]) {
     println!(
         "{}",
         if answer["ok"].as_bool().unwrap_or(false) {
-            "Renommé."
+            "Renamed."
         } else {
-            "Nom refusé."
+            "Name refused."
         }
     );
 }
 
 async fn folder(args: &[String]) {
     let Some(path) = args.first() else {
-        eprintln!("usage : tapdrop folder <chemin>");
+        eprintln!("usage: tapdrop folder <path>");
         return;
     };
     let Some(answer) = call(json!({ "cmd": "folder", "path": path })).await else {
@@ -348,12 +340,12 @@ async fn folder(args: &[String]) {
     };
     if answer["ok"].as_bool().unwrap_or(false) {
         println!(
-            "Les fichiers arriveront dans {}.",
+            "Files will land in {}.",
             answer["path"].as_str().unwrap_or(path)
         );
     } else {
         eprintln!(
-            "Dossier refusé : {}",
+            "Folder refused: {}",
             answer["error"].as_str().unwrap_or("?")
         );
     }
@@ -364,7 +356,7 @@ async fn sensors() {
     let paths = match iio::Paths::discover() {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("Capteurs introuvables : {e}");
+            eprintln!("Sensors not found: {e}");
             return;
         }
     };
@@ -373,11 +365,11 @@ async fn sensors() {
         let lux = paths.read_lux();
         let prox = paths.read_prox();
         println!(
-            "lumière {:>7} lx   proximité {}",
+            "light {:>7} lx   proximity {}",
             lux.map(|l| format!("{l:.1}")).unwrap_or_else(|| "?".into()),
             match prox {
-                Some(iio::Proximity::Near) => "collée",
-                Some(iio::Proximity::Far) => "dégagée",
+                Some(tapdrop_protocol::sensors::Proximity::Near) => "against",
+                Some(tapdrop_protocol::sensors::Proximity::Far) => "clear",
                 None => "?",
             }
         );
@@ -387,11 +379,11 @@ async fn sensors() {
 
 async fn forget(args: &[String]) {
     let Some(device) = args.first() else {
-        eprintln!("usage : tapdrop forget <id-du-téléphone>");
+        eprintln!("usage: tapdrop forget <phone-id>");
         return;
     };
     let _ = call(json!({ "cmd": "forget", "device": device })).await;
-    println!("Oublié.");
+    println!("Forgotten.");
 }
 
 fn help() {
@@ -399,19 +391,19 @@ fn help() {
         "\
 tapdrop-linux
 
-  tapdrop run [--auto-pair]   démarre le service (sans confirmation d'appairage avec --auto-pair)
-  tapdrop status              état du service et téléphones appairés
-  tapdrop pending             appairages en attente
-  tapdrop approve <code>      accepte l'appairage qui affiche ce code
-  tapdrop deny <code>         refuse cet appairage
-  tapdrop send <fichier…>     met des fichiers en file pour le téléphone
-  tapdrop send --clipboard    envoie le presse-papiers de cet ordinateur
-  tapdrop clipboard           idem, en un mot
-  tapdrop devices             téléphones appairés
-  tapdrop sensors             ce que voit le capteur de la bosse caméra
-  tapdrop forget <id>         oublie un téléphone
-  tapdrop rename <nom>        renomme cet ordinateur pour le téléphone
-  tapdrop folder <chemin>     choisit où arrivent les fichiers reçus
-  tapdrop quit                arrête le service"
+  tapdrop run [--auto-pair]   start the service (pairs without asking with --auto-pair)
+  tapdrop status              service state and paired phones
+  tapdrop pending             pairings waiting for approval
+  tapdrop approve <code>      accept the pairing showing this code
+  tapdrop deny <code>         refuse that pairing
+  tapdrop send <file…>        queue files for the phone
+  tapdrop send --clipboard    send this computer's clipboard
+  tapdrop clipboard           the same, shorter
+  tapdrop devices             paired phones
+  tapdrop sensors             what the camera bump's sensors see
+  tapdrop forget <id>         forget a phone
+  tapdrop rename <name>       rename this computer for the phone
+  tapdrop folder <path>       choose where received files land
+  tapdrop quit                stop the service"
     );
 }

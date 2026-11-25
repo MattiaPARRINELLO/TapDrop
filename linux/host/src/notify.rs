@@ -48,7 +48,7 @@ pub fn send(title: &str, body: &str) {
 /// A phone wants to pair: the person has to compare the code and approve.
 pub fn pairing(code: &str, device: &str) {
     send(
-        &format!("Appairage de {device}"),
-        &format!("Code {code} sur les deux écrans ? Puis : tapdrop approve {code}"),
+        &format!("Pairing {device}"),
+        &format!("Does {code} match on both screens? Then run: tapdrop approve {code}"),
     );
 }
