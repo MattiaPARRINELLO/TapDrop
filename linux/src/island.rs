@@ -929,23 +929,32 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
     );
 
     let text_x = x + PADDING + RING + GAP;
-    let (title_y, detail_y) = if view.kind == Kind::Code {
-        (PADDING - 4.0, PADDING + 12.0)
-    } else {
-        (PADDING + 1.0, PADDING + 20.0)
-    };
     let text_alpha = alpha * content;
-    // A code is the hero of its card: the big line is bone, not secondary.
     let detail_color = if view.kind == Kind::Code { BONE } else { SECONDARY };
+
+    // The two lines are measured and centred as a block, on the ring's own axis, so nothing sits
+    // high or low depending on the font's ascent.
+    let (title_height, detail_height) = block_heights(&view.layouts);
+    let gap = if detail_height > 0.0 { 3.0 } else { 0.0 };
+    let block = title_height + gap + detail_height;
+    let top = ((height - block) / 2.0).max(6.0);
+    let title_y = top;
+    let detail_y = top + title_height + gap;
+
     if morph < 0.999 {
+        let prev_title_height = layout_height(&view.layouts.prev_title);
+        let prev_detail_height = layout_height(&view.layouts.prev_detail);
+        let prev_gap = if prev_detail_height > 0.0 { 3.0 } else { 0.0 };
+        let prev_block = prev_title_height + prev_gap + prev_detail_height;
+        let prev_top = ((height - prev_block) / 2.0).max(6.0);
         if let (Some(title), Some(detail)) = (&view.layouts.prev_title, &view.layouts.prev_detail) {
-            draw_layout(cr, title, text_x, title_y, BONE, text_alpha * (1.0 - morph));
+            draw_layout(cr, title, text_x, prev_top, BONE, text_alpha * (1.0 - morph));
             draw_layout(
                 cr,
                 detail,
                 text_x,
-                detail_y,
-                SECONDARY,
+                prev_top + prev_title_height + prev_gap,
+                detail_color,
                 text_alpha * (1.0 - morph),
             );
         }
@@ -954,13 +963,16 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
         draw_layout(cr, title, text_x, title_y, BONE, text_alpha * morph);
         draw_layout(cr, detail, text_x, detail_y, detail_color, text_alpha * morph);
     }
+
+    // The trailing number sits on the title's baseline, not floating in a corner.
     if let Some(trailing) = &view.layouts.trailing {
-        let (tw, _) = trailing.pixel_size();
+        let (trailing_width, trailing_height) = trailing.pixel_size();
+        let y = title_y + (title_height - f64::from(trailing_height)) / 2.0;
         draw_layout(
             cr,
             trailing,
-            x + width - PADDING - f64::from(tw),
-            PADDING + 3.0,
+            x + width - PADDING - f64::from(trailing_width),
+            y,
             SECONDARY,
             text_alpha * morph,
         );
@@ -976,10 +988,7 @@ fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
             cr.arc(center.0, center.1, 13.0, 0.0, std::f64::consts::TAU);
             let _ = cr.fill();
             glyph_action(cr, center.0, center.1, glyph, BONE, alpha * content * 0.9);
-            buttons.borrow_mut().push((
-                (center.0 - 13.0, center.1 - 13.0, 26.0, 26.0),
-                act,
-            ));
+            buttons.borrow_mut().push(((center.0 - 13.0, center.1 - 13.0, 26.0, 26.0), act));
         }
     }
 
@@ -1251,6 +1260,18 @@ fn rounded_rect(cr: &cairo::Context, x: f64, y: f64, width: f64, height: f64, ra
     cr.arc(x + r, y + height - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
     cr.arc(x + r, y + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
     cr.close_path();
+}
+
+/// The pixel height of a text line, which is what centres the block honestly.
+fn layout_height(layout: &Option<pango::Layout>) -> f64 {
+    layout
+        .as_ref()
+        .map(|l| f64::from(l.pixel_size().1))
+        .unwrap_or(0.0)
+}
+
+fn block_heights(layouts: &Layouts) -> (f64, f64) {
+    (layout_height(&layouts.title), layout_height(&layouts.detail))
 }
 
 fn sizes_for(kind: Kind) -> (i32, i32) {
