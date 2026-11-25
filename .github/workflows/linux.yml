@@ -1,0 +1,44 @@
+name: Linux host
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libgtk4-layer-shell-dev libfontconfig1-dev
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            linux/target
+          key: linux-${{ runner.os }}-${{ hashFiles('linux/Cargo.lock') }}
+          restore-keys: linux-${{ runner.os }}-
+
+      - name: Format
+        run: cd linux && cargo fmt --all --check
+
+      - name: Clippy
+        run: cd linux && cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cd linux && cargo test --workspace
