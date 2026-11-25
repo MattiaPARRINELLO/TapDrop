@@ -20,7 +20,7 @@ fonctionne telle quelle : ce programme parle exactement le protocole décrit dan
 | File d'envoi | `tapdrop-linux send`, annoncée sur le lien live du téléphone |
 | Découverte | DNS-SD `_tapdrop._tcp` via avahi, ou répondeur mDNS intégré |
 | Tap | le téléphone posé sur la bosse caméra envoie ce qui est à l'écran |
-| Îlot | pastille animée en haut de l'écran, alignée sur le design system du projet : Geist, palette night/bone, anneau de progression, coche encre sur disque bone, ressorts d'Apple |
+| Îlot | pastille animée en haut de l'écran, alignée sur le design system du projet : Geist, palette night/bone, anneau de progression, vignette du fichier reçu, boutons Ouvrir et Dossier, ressorts d'Apple |
 | Barre d'état | icône StatusNotifierItem avec menu, appairages en cours, quitter |
 | Fenêtre | état, téléphones, appairage, réglages (`tapdrop-linux ui`) |
 
@@ -161,6 +161,11 @@ ressorts du système (îlot 0,42 s / 0,78, contenu 0,38 s / 0,86).
 
 La surface ignore la réserve du panneau (`set_exclusive_zone(-1)`), pour partir du bord physique de
 l'écran comme une vraie encoche, au lieu d'être poussée sous la barre du haut.
+
+Quand un fichier arrive, sa vignette est décodée hors du fil d'affichage (une photo de téléphone
+bloquerait l'animation), dessinée en 26 px arrondis, et deux boutons discrets apparaissent à droite :
+ouvrir le fichier, ou son dossier. Le résultat reste huit secondes à l'écran, et le compte à rebours
+s'arrête tant que la souris est sur la pastille.
 
 Les deux fontes du projet sont embarquées dans le binaire et enregistrées dans le processus au démarrage,
 sans toucher au dossier de fontes de la personne : `fonts/Geist[wght].ttf` et `fonts/GeistMono[wght].ttf`,

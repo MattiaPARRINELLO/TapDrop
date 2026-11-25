@@ -106,7 +106,10 @@ L'îlot suit maintenant `docs/DESIGN.md` du projet plutôt que d'improviser :
   en mono à droite ;
 - anneau de progression avec piste à 15 %, arc bone, point lumineux à la tête, quart de tour indéterminé
   quand la taille totale est inconnue ;
-- succès : disque bone, coche encre qui se trace ;
+- succès : disque bone, coche encre qui se trace, ou la vignette du fichier reçu quand c'en est une
+  image, décodée hors du fil d'affichage ;
+- deux boutons discrets dans le résultat : ouvrir le fichier, ou son dossier ; le résultat reste huit
+  secondes, et le compte à rebours s'arrête tant que la souris est dessus ;
 - ressorts du système : îlot 0,42 s / 0,78, contenu 0,38 s / 0,86, vérifiés à 120 images par seconde ;
 - respect de « réduire les animations » quand GTK le signale ;
 - mises en page Pango en cache, pour ne rien recalculer à 120 images par seconde.

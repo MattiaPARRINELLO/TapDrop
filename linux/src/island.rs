@@ -70,6 +70,38 @@ fn load_fonts() {
     }
 }
 
+/// A small preview of the file that just landed, decoded off the main thread.
+struct Thumb {
+    width: i32,
+    height: i32,
+    /// B, G, R, 255 per pixel: what Cairo's RGB24 wants on a little-endian machine.
+    data: Vec<u8>,
+}
+
+fn load_thumb(path: &std::path::Path) -> Option<Thumb> {
+    let size = std::fs::metadata(path).ok()?.len();
+    if size > 48 * 1024 * 1024 {
+        return None;
+    }
+    let image = image::open(path).ok()?.thumbnail(96, 96).to_rgba8();
+    let (width, height) = image.dimensions();
+    let mut data = Vec::with_capacity((width * height * 4) as usize);
+    for pixel in image.pixels() {
+        data.extend_from_slice(&[pixel[2], pixel[1], pixel[0], 255]);
+    }
+    Some(Thumb { width: width as i32, height: height as i32, data })
+}
+
+/// What a click on one of the island's buttons does.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Act {
+    Open,
+    Folder,
+}
+
+/// The buttons drawn in the last frame, with their hit boxes.
+type Buttons = Rc<RefCell<Vec<((f64, f64, f64, f64), Act)>>>;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Kind {
     /// Something landed on the camera bump: the notch breathes before any transfer starts.
@@ -268,7 +300,11 @@ impl View {
         let (title_size, detail_size) = sizes_for(self.kind);
         let title = measure_line(area, &self.title, TEXT_FONT, title_size, true, -0.15);
         let detail = measure_line(area, &self.detail, TEXT_FONT, detail_size, false, 0.0);
-        let trailing = if self.kind == Kind::Code { 0.0 } else { 46.0 };
+        let trailing = match self.kind {
+            Kind::Code => 0.0,
+            Kind::Done => 66.0,
+            _ => 46.0,
+        };
         let width = title.max(detail) + PADDING * 2.0 + RING + GAP + trailing;
         self.target_width = width.clamp(NOTCH_WIDTH + 60.0, 560.0);
         self.target_height = if self.kind == Kind::Code { PADDING * 2.0 + 40.0 } else { PADDING * 2.0 + 26.0 };
@@ -465,6 +501,10 @@ fn build(app: &gtk::Application) {
     let pointer = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let pill = Rc::new(Cell::new(None::<(i32, i32, i32, i32)>));
     let target = Rc::new(RefCell::new(None::<PathBuf>));
+    let thumb = Rc::new(RefCell::new(None::<Thumb>));
+    let buttons: Buttons = Rc::new(RefCell::new(Vec::new()));
+    let thumb_gen = Rc::new(Cell::new(0u64));
+    let (thumb_tx, thumb_rx) = std::sync::mpsc::channel::<(u64, Option<Thumb>)>();
 
     area.add_tick_callback({
         let view = view.clone();
@@ -486,15 +526,21 @@ fn build(app: &gtk::Application) {
         let motion = motion.clone();
         let pill = pill.clone();
         let pointer = pointer.clone();
+        let thumb = thumb.clone();
+        let buttons = buttons.clone();
         move |area, cr, _w, _h| {
-            draw(
-                area,
-                cr,
-                &view.borrow(),
-                &motion.borrow(),
-                &pill,
-                pointer.get(),
-            );
+            let view = view.borrow();
+            let motion = motion.borrow();
+            let thumb = thumb.borrow();
+            let scene = Scene {
+                view: &view,
+                motion: &motion,
+                pill: &pill,
+                pointer: pointer.get(),
+                thumb: &thumb,
+                buttons: &buttons,
+            };
+            draw(area, cr, &scene);
         }
     });
 
@@ -521,8 +567,15 @@ fn build(app: &gtk::Application) {
 
     let click = gtk::GestureClick::new();
     click.connect_released({
-        let (pill, target) = (pill.clone(), target.clone());
+        let (pill, target, buttons) = (pill.clone(), target.clone(), buttons.clone());
         move |_, _, x, y| {
+            for (rect, act) in buttons.borrow().iter() {
+                let hit = x >= rect.0 && x <= rect.0 + rect.2 && y >= rect.1 && y <= rect.1 + rect.3;
+                if hit {
+                    act_on(*act, target.borrow().as_deref());
+                    return;
+                }
+            }
             let inside = pill
                 .get()
                 .map(|(px, py, pw, ph)| {
@@ -546,9 +599,18 @@ fn build(app: &gtk::Application) {
         let area = area.clone();
         let target = target.clone();
         let motion = motion.clone();
+        let thumb = thumb.clone();
+        let thumb_tx = thumb_tx.clone();
+        let thumb_gen = thumb_gen.clone();
         move || {
             while let Ok(value) = receiver.try_recv() {
-                apply(&view, &area, &target, &motion, &value);
+                apply(&view, &area, &target, &motion, &thumb, &thumb_tx, &thumb_gen, &value);
+            }
+            while let Ok((generation, decoded)) = thumb_rx.try_recv() {
+                if generation == thumb_gen.get() {
+                    *thumb.borrow_mut() = decoded;
+                    area.queue_draw();
+                }
             }
             glib::ControlFlow::Continue
         }
@@ -564,10 +626,15 @@ fn build(app: &gtk::Application) {
         let area = area.clone();
         let pill = pill.clone();
         let motion = motion.clone();
+        let hovered_for_timer = hovered.clone();
         move || {
             let now = Instant::now();
             {
                 let mut state = view.borrow_mut();
+                // A result waits while the person is aiming at its buttons.
+                if state.hide_at.is_some() && hovered_for_timer.get() {
+                    state.hide_at = Some(now + Duration::from_secs(2));
+                }
                 let mut visible = state.visible;
                 if visible
                     && state.hide_at.is_none()
@@ -656,11 +723,15 @@ fn listen(sender: std::sync::mpsc::Sender<Value>) {
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply(
     view: &Rc<RefCell<View>>,
     area: &gtk::DrawingArea,
     target: &Rc<RefCell<Option<PathBuf>>>,
     motion: &Rc<RefCell<Motion>>,
+    thumb: &Rc<RefCell<Option<Thumb>>>,
+    thumb_tx: &std::sync::mpsc::Sender<(u64, Option<Thumb>)>,
+    thumb_gen: &Rc<Cell<u64>>,
     value: &Value,
 ) {
     let title = value["title"].as_str().unwrap_or_default();
@@ -668,6 +739,8 @@ fn apply(
     // A new transfer forgets the file of the previous one: a click must never open a stale photo.
     if matches!(value["t"].as_str(), Some("recv" | "send" | "detect")) {
         *target.borrow_mut() = None;
+        *thumb.borrow_mut() = None;
+        thumb_gen.set(thumb_gen.get().wrapping_add(1));
     }
     if value["t"] == "done" {
         let path = value["target"].as_str().unwrap_or_default();
@@ -676,6 +749,19 @@ fn apply(
         } else {
             Some(PathBuf::from(path))
         };
+        // The preview is decoded off the main thread: a phone photo would hitch the animation.
+        if !path.is_empty() {
+            let generation = thumb_gen.get().wrapping_add(1);
+            thumb_gen.set(generation);
+            let sender = thumb_tx.clone();
+            let file = PathBuf::from(path);
+            std::thread::spawn(move || {
+                let decoded = load_thumb(&file);
+                let _ = sender.send((generation, decoded));
+            });
+        } else {
+            *thumb.borrow_mut() = None;
+        }
     }
 
     let mut state = view.borrow_mut();
@@ -737,14 +823,20 @@ fn apply(
     area.queue_draw();
 }
 
-fn draw(
-    _area: &gtk::DrawingArea,
-    cr: &cairo::Context,
-    view: &View,
-    motion: &Motion,
-    pill: &Cell<Option<(i32, i32, i32, i32)>>,
+/// Everything one frame needs, so the drawing function keeps a readable signature.
+struct Scene<'a> {
+    view: &'a View,
+    motion: &'a Motion,
+    pill: &'a Cell<Option<(i32, i32, i32, i32)>>,
     pointer: (f64, f64),
-) {
+    thumb: &'a Option<Thumb>,
+    buttons: &'a Buttons,
+}
+
+fn draw(area: &gtk::DrawingArea, cr: &cairo::Context, scene: &Scene) {
+    let Scene { view, motion, pill, pointer, thumb, buttons } = scene;
+    let pointer = *pointer;
+    let _ = area;
     let open = motion.open.value;
     let alpha = open.clamp(0.0, 1.0);
     if !view.visible || (view.title.is_empty() && view.kind != Kind::Detect) || alpha <= 0.01 {
@@ -755,6 +847,7 @@ fn draw(
         return;
     }
 
+    buttons.borrow_mut().clear();
     let now = Instant::now();
     let morph = if view.kind == view.prev_kind {
         1.0
@@ -817,8 +910,10 @@ fn draw(
             1.0,
             motion,
             -1.0,
+            None,
         );
     }
+    let preview = if view.kind == Kind::Done { thumb.as_ref() } else { None };
     leading(
         cr,
         ring_x,
@@ -830,6 +925,7 @@ fn draw(
         morph,
         motion,
         view.progress.map(f64::from).unwrap_or(-1.0),
+        preview,
     );
 
     let text_x = x + PADDING + RING + GAP;
@@ -870,6 +966,23 @@ fn draw(
         );
     }
 
+    // Two quiet buttons on the right: open the file, or its folder.
+    if view.kind == Kind::Done {
+        let folder = (x + width - PADDING - 13.0, center_y);
+        let open = (folder.0 - 32.0, center_y);
+        for (center, act, glyph) in [(open, Act::Open, 0), (folder, Act::Folder, 1)] {
+            let hovered = (pointer.0 - center.0).powi(2) + (pointer.1 - center.1).powi(2) < 13.0 * 13.0;
+            cr.set_source_rgba(1.0, 1.0, 1.0, (if hovered { 0.14 } else { 0.06 }) * alpha * content);
+            cr.arc(center.0, center.1, 13.0, 0.0, std::f64::consts::TAU);
+            let _ = cr.fill();
+            glyph_action(cr, center.0, center.1, glyph, BONE, alpha * content * 0.9);
+            buttons.borrow_mut().push((
+                (center.0 - 13.0, center.1 - 13.0, 26.0, 26.0),
+                act,
+            ));
+        }
+    }
+
     // The pointer light: a soft radial highlight under the cursor while hovering.
     if hover > 0.02 && view.keep_pointer_light() {
         let light =
@@ -907,6 +1020,7 @@ fn leading(
     sweep: f64,
     motion: &Motion,
     progress: f64,
+    thumb: Option<&Thumb>,
 ) {
     if alpha <= 0.01 {
         return;
@@ -937,12 +1051,16 @@ fn leading(
             );
         }
         Kind::Done => {
-            // The accent is bone: a bone disc, an ink check drawing itself.
-            let r = radius * (1.0 + 0.02 * hover);
-            cr.set_source_rgba(BONE.0, BONE.1, BONE.2, alpha);
-            cr.arc(cx, cy, r, 0.0, std::f64::consts::TAU);
-            let _ = cr.fill();
-            check(cr, cx, cy, NIGHT, alpha, motion.check.value);
+            // A photo shows itself; anything else gets a bone disc and an ink check.
+            if let Some(thumb) = thumb {
+                draw_thumb(cr, cx - radius, cy - radius, RING, thumb, alpha);
+            } else {
+                let r = radius * (1.0 + 0.02 * hover);
+                cr.set_source_rgba(BONE.0, BONE.1, BONE.2, alpha);
+                cr.arc(cx, cy, r, 0.0, std::f64::consts::TAU);
+                let _ = cr.fill();
+                check(cr, cx, cy, NIGHT, alpha, motion.check.value);
+            }
         }
         Kind::Code | Kind::Hint | Kind::Error => {
             let color = match kind {
@@ -1049,6 +1167,90 @@ fn glyph(cr: &cairo::Context, cx: f64, cy: f64, kind: Kind, color: (f64, f64, f6
         }
         _ => {}
     }
+}
+
+/// Draws the preview, cropped to fill its square, with rounded corners.
+fn draw_thumb(cr: &cairo::Context, x: f64, y: f64, size: f64, thumb: &Thumb, alpha: f64) {
+    let stride = thumb.width * 4;
+    let Ok(surface) = cairo::ImageSurface::create_for_data(
+        thumb.data.clone(),
+        cairo::Format::Rgb24,
+        thumb.width,
+        thumb.height,
+        stride,
+    ) else {
+        return;
+    };
+    let _ = cr.save();
+    rounded_rect(cr, x, y, size, size, 8.0);
+    cr.clip();
+    let scale = (size / f64::from(thumb.width)).max(size / f64::from(thumb.height));
+    let width = f64::from(thumb.width) * scale;
+    let height = f64::from(thumb.height) * scale;
+    cr.translate(x + (size - width) / 2.0, y + (size - height) / 2.0);
+    cr.scale(scale, scale);
+    let _ = cr.set_source_surface(&surface, 0.0, 0.0);
+    let _ = cr.paint_with_alpha(alpha);
+    let _ = cr.restore();
+    rounded_rect(cr, x, y, size, size, 8.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.10 * alpha);
+    cr.set_line_width(0.7);
+    let _ = cr.stroke();
+}
+
+fn glyph_action(cr: &cairo::Context, cx: f64, cy: f64, which: u8, color: (f64, f64, f64), alpha: f64) {
+    cr.set_source_rgba(color.0, color.1, color.2, alpha);
+    cr.set_line_width(1.6);
+    cr.set_line_cap(cairo::LineCap::Round);
+    cr.set_line_join(cairo::LineJoin::Round);
+    if which == 0 {
+        // Open: an arrow leaving its box.
+        cr.move_to(cx - 1.0, cy - 2.0);
+        cr.line_to(cx + 5.0, cy - 6.0);
+        let _ = cr.stroke();
+        cr.move_to(cx + 1.0, cy - 6.0);
+        cr.line_to(cx + 5.0, cy - 6.0);
+        cr.line_to(cx + 5.0, cy - 2.0);
+        let _ = cr.stroke();
+        cr.move_to(cx + 3.0, cy + 2.0);
+        cr.line_to(cx + 3.0, cy + 5.0);
+        cr.line_to(cx - 5.0, cy + 5.0);
+        cr.line_to(cx - 5.0, cy - 3.0);
+        cr.line_to(cx - 2.0, cy - 3.0);
+        let _ = cr.stroke();
+    } else {
+        // Folder.
+        cr.move_to(cx - 6.0, cy - 4.0);
+        cr.line_to(cx - 2.0, cy - 4.0);
+        cr.line_to(cx - 0.5, cy - 2.0);
+        cr.line_to(cx + 6.0, cy - 2.0);
+        cr.line_to(cx + 6.0, cy + 4.0);
+        cr.line_to(cx - 6.0, cy + 4.0);
+        cr.close_path();
+        let _ = cr.stroke();
+    }
+}
+
+fn act_on(act: Act, target: Option<&std::path::Path>) {
+    let path = match act {
+        Act::Open => target.map(|p| p.to_path_buf()),
+        Act::Folder => target
+            .and_then(|p| p.parent().map(|parent| parent.to_path_buf()))
+            .or_else(dirs::download_dir),
+    };
+    if let Some(path) = path {
+        let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+    }
+}
+
+fn rounded_rect(cr: &cairo::Context, x: f64, y: f64, width: f64, height: f64, radius: f64) {
+    let r = radius.min(width / 2.0).min(height / 2.0);
+    cr.new_sub_path();
+    cr.arc(x + width - r, y + r, r, -std::f64::consts::FRAC_PI_2, 0.0);
+    cr.arc(x + width - r, y + height - r, r, 0.0, std::f64::consts::FRAC_PI_2);
+    cr.arc(x + r, y + height - r, r, std::f64::consts::FRAC_PI_2, std::f64::consts::PI);
+    cr.arc(x + r, y + r, r, std::f64::consts::PI, 3.0 * std::f64::consts::FRAC_PI_2);
+    cr.close_path();
 }
 
 fn sizes_for(kind: Kind) -> (i32, i32) {
