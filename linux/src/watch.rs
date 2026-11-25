@@ -52,7 +52,11 @@ pub struct Hub {
 
 impl Hub {
     pub fn new(notch: bool) -> Arc<Self> {
-        Arc::new(Self { links: Mutex::new(HashMap::new()), next_id: AtomicUsize::new(1), notch })
+        Arc::new(Self {
+            links: Mutex::new(HashMap::new()),
+            next_id: AtomicUsize::new(1),
+            notch,
+        })
     }
 
     pub async fn add(&self, link: Arc<LiveLink>) -> usize {
@@ -90,7 +94,11 @@ impl Hub {
 
     #[allow(dead_code)]
     pub async fn is_live(&self, device_id: &str) -> bool {
-        self.links.lock().await.values().any(|l| l.device_id == device_id)
+        self.links
+            .lock()
+            .await
+            .values()
+            .any(|l| l.device_id == device_id)
     }
 
     /// The phones a tap could be aimed at, newest first.
@@ -119,7 +127,10 @@ pub async fn run(
     loop {
         let msg = match tokio::time::timeout(SILENCE_LIMIT, reader.recv()).await {
             Err(_) => {
-                eprintln!("tapdrop: nothing from {} for 45 s, dropping its live link", link.device_id);
+                eprintln!(
+                    "tapdrop: nothing from {} for 45 s, dropping its live link",
+                    link.device_id
+                );
                 break;
             }
             Ok(Err(e)) => {

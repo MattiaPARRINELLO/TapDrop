@@ -37,7 +37,11 @@ impl TapTray {
             1 => format!("{} appairé", self.devices[0]),
             n => format!("{n} téléphones appairés"),
         };
-        let tap = if self.notch { "tap prêt" } else { "tap indisponible" };
+        let tap = if self.notch {
+            "tap prêt"
+        } else {
+            "tap indisponible"
+        };
         format!("{phones} · {tap}")
     }
 }
@@ -140,7 +144,12 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
     let (tx, mut rx) = unbounded_channel();
     let state = TapTray {
         tx: tx.clone(),
-        devices: store.snapshot().devices.iter().map(|d| d.name.clone()).collect(),
+        devices: store
+            .snapshot()
+            .devices
+            .iter()
+            .map(|d| d.name.clone())
+            .collect(),
         pending: Vec::new(),
         notch: host.hub.notch,
     };
@@ -161,18 +170,20 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
             let mut ticker = tokio::time::interval(std::time::Duration::from_secs(1));
             loop {
                 ticker.tick().await;
-                let devices: Vec<String> = store.snapshot().devices.iter().map(|d| d.name.clone()).collect();
-                let pending: Vec<(String, String)> = host
-                    .pending
-                    .list()
-                    .await
-                    .into_iter()
-                    .map(|(code, device)| (code, device))
+                let devices: Vec<String> = store
+                    .snapshot()
+                    .devices
+                    .iter()
+                    .map(|d| d.name.clone())
                     .collect();
+                let pending: Vec<(String, String)> =
+                    host.pending.list().await.into_iter().collect();
                 let notch = host.hub.notch;
                 handle
                     .update(move |tray| {
-                        let changed = tray.devices != devices || tray.pending != pending || tray.notch != notch;
+                        let changed = tray.devices != devices
+                            || tray.pending != pending
+                            || tray.notch != notch;
                         tray.devices = devices;
                         tray.pending = pending;
                         tray.notch = notch;
@@ -187,7 +198,9 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
         match command {
             Command::OpenUi => open_ui(),
             Command::Clipboard => {
-                let snapshot = tokio::task::spawn_blocking(crate::clipboard::read).await.ok();
+                let snapshot = tokio::task::spawn_blocking(crate::clipboard::read)
+                    .await
+                    .ok();
                 if crate::control::queue_clipboard(&store, snapshot).await {
                     host.announce_inbox().await;
                     crate::notify::send("TapDrop", "Presse-papiers en file pour le téléphone");
@@ -211,7 +224,9 @@ pub async fn start(host: Arc<Host>, store: Arc<Store>, shutdown: Arc<Notify>) {
 
 /// The window is its own process: GTK wants the main thread, the service owns it for tokio.
 fn open_ui() {
-    let Ok(exe) = std::env::current_exe() else { return };
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
     if let Err(e) = Process::new(exe).arg("ui").spawn() {
         eprintln!("tapdrop: impossible d'ouvrir l'interface : {e}");
     }
@@ -240,7 +255,11 @@ fn notch_icon(size: i32) -> Icon {
             }
         }
     }
-    Icon { width: size, height: size, data }
+    Icon {
+        width: size,
+        height: size,
+        data,
+    }
 }
 
 fn rounded_rect(x: f32, y: f32, left: f32, top: f32, right: f32, bottom: f32, radius: f32) -> bool {
@@ -248,10 +267,26 @@ fn rounded_rect(x: f32, y: f32, left: f32, top: f32, right: f32, bottom: f32, ra
         return false;
     }
     let corners = [
-        (left + radius, top + radius, x < left + radius && y < top + radius),
-        (right - radius, top + radius, x > right - radius && y < top + radius),
-        (left + radius, bottom - radius, x < left + radius && y > bottom - radius),
-        (right - radius, bottom - radius, x > right - radius && y > bottom - radius),
+        (
+            left + radius,
+            top + radius,
+            x < left + radius && y < top + radius,
+        ),
+        (
+            right - radius,
+            top + radius,
+            x > right - radius && y < top + radius,
+        ),
+        (
+            left + radius,
+            bottom - radius,
+            x < left + radius && y > bottom - radius,
+        ),
+        (
+            right - radius,
+            bottom - radius,
+            x > right - radius && y > bottom - radius,
+        ),
     ];
     for (cx, cy, in_corner) in corners {
         if in_corner && (x - cx).powi(2) + (y - cy).powi(2) > radius.powi(2) {

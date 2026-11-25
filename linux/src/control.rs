@@ -52,8 +52,18 @@ pub struct Control {
 }
 
 impl Control {
-    pub fn new(host: Arc<Host>, hub: Arc<Hub>, port: u16, shutdown: Arc<tokio::sync::Notify>) -> Self {
-        Self { host, hub, port, shutdown }
+    pub fn new(
+        host: Arc<Host>,
+        hub: Arc<Hub>,
+        port: u16,
+        shutdown: Arc<tokio::sync::Notify>,
+    ) -> Self {
+        Self {
+            host,
+            hub,
+            port,
+            shutdown,
+        }
     }
 
     pub async fn run(self) -> Result<()> {
@@ -66,7 +76,8 @@ impl Control {
                 let _ = tokio::fs::remove_file(&path).await;
             }
         }
-        let listener = UnixListener::bind(&path).with_context(|| format!("binding {}", path.display()))?;
+        let listener =
+            UnixListener::bind(&path).with_context(|| format!("binding {}", path.display()))?;
         loop {
             let (stream, _) = listener.accept().await?;
             let this = Reply {
@@ -131,7 +142,12 @@ impl Reply {
             "send" => {
                 let paths: Vec<PathBuf> = request["paths"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(PathBuf::from).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(PathBuf::from)
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let mut queued = 0;
                 for path in paths {
@@ -142,7 +158,9 @@ impl Reply {
                     }
                 }
                 if request["clipboard"].as_bool().unwrap_or(false) {
-                    let snapshot = tokio::task::spawn_blocking(crate::clipboard::read).await.ok();
+                    let snapshot = tokio::task::spawn_blocking(crate::clipboard::read)
+                        .await
+                        .ok();
                     let path = queue_clipboard(&store, snapshot).await;
                     if path {
                         queued += 1;
@@ -152,7 +170,9 @@ impl Reply {
                 json!({ "ok": true, "queued": queued })
             }
             "clipboard" => {
-                let snapshot = tokio::task::spawn_blocking(crate::clipboard::read).await.ok();
+                let snapshot = tokio::task::spawn_blocking(crate::clipboard::read)
+                    .await
+                    .ok();
                 let queued = queue_clipboard(&store, snapshot).await;
                 self.host.announce_inbox().await;
                 json!({ "ok": true, "queued": queued })
@@ -219,7 +239,8 @@ pub async fn queue_clipboard(store: &Store, snapshot: Option<crate::clipboard::S
             true
         }
         Some(Snapshot::Image(png)) => {
-            let path = std::env::temp_dir().join(format!("tapdrop-clip-{}.png", uuid::Uuid::new_v4()));
+            let path =
+                std::env::temp_dir().join(format!("tapdrop-clip-{}.png", uuid::Uuid::new_v4()));
             if tokio::fs::write(&path, png).await.is_ok() {
                 store.queue(server::new_queue_item(Some(path), None));
                 return true;
@@ -244,4 +265,3 @@ fn shellexpand_home(path: &str) -> PathBuf {
         None => PathBuf::from(path),
     }
 }
-

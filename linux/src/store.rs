@@ -206,7 +206,11 @@ impl Store {
 
     /// Applies a `names` message: the newest change wins (PROTOCOL.md → "Names"). Returns our answer
     /// when the two views still differ, which makes both sides settle on the same names.
-    pub fn take_names(&self, device_id: &str, message: &serde_json::Value) -> Option<serde_json::Value> {
+    pub fn take_names(
+        &self,
+        device_id: &str,
+        message: &serde_json::Value,
+    ) -> Option<serde_json::Value> {
         let (peer_host, peer_phone) = (entry(&message["mac"]), entry(&message["phone"]));
         let mut differs = false;
         {

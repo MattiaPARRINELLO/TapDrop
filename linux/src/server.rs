@@ -41,7 +41,10 @@ struct Pending {
 
 impl PendingPairs {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self { inner: Mutex::new(Vec::new()), next_id: AtomicU64::new(1) })
+        Arc::new(Self {
+            inner: Mutex::new(Vec::new()),
+            next_id: AtomicU64::new(1),
+        })
     }
 
     async fn ask(&self, code: &str, device: &str) -> (u64, oneshot::Receiver<bool>) {
@@ -57,7 +60,12 @@ impl PendingPairs {
     }
 
     pub async fn list(&self) -> Vec<(String, String)> {
-        self.inner.lock().await.iter().map(|p| (p.code.clone(), p.device.clone())).collect()
+        self.inner
+            .lock()
+            .await
+            .iter()
+            .map(|p| (p.code.clone(), p.device.clone()))
+            .collect()
     }
 
     /// Approves the request with that code and tells the waiting connection so.
@@ -98,7 +106,10 @@ pub struct Host {
 
 impl Host {
     pub async fn handle(self: Arc<Self>, stream: TcpStream) {
-        let peer = stream.peer_addr().map(|a| a.ip().to_string()).unwrap_or_default();
+        let peer = stream
+            .peer_addr()
+            .map(|a| a.ip().to_string())
+            .unwrap_or_default();
         let mut io = FrameIo::new(stream);
         let first = match tokio::time::timeout(OPENER_TIMEOUT, io.read_json()).await {
             Ok(Ok(v)) => v,
@@ -144,7 +155,10 @@ impl Host {
             self.island.code(&device_name, &secret.code);
             notify::pairing(&secret.code, &device_name);
             let (id, rx) = self.pending.ask(&secret.code, &device_name).await;
-            let verdict = tokio::time::timeout(PAIR_TIMEOUT, rx).await.ok().and_then(Result::ok);
+            let verdict = tokio::time::timeout(PAIR_TIMEOUT, rx)
+                .await
+                .ok()
+                .and_then(Result::ok);
             self.pending.cancel(id).await;
             verdict.unwrap_or(false)
         };
@@ -155,9 +169,13 @@ impl Host {
             return Ok(());
         }
         self.store.add_device(&device_id, &device_name, secret.key);
-        self.island.done("Appairé", &format!("{device_name} peut envoyer"));
+        self.island
+            .done("Appairé", &format!("{device_name} peut envoyer"));
         io.write_json(&json!({ "t": "pair-ok" })).await?;
-        notify::send("Appairé", &format!("{device_name} peut maintenant envoyer vers {}", state.name));
+        notify::send(
+            "Appairé",
+            &format!("{device_name} peut maintenant envoyer vers {}", state.name),
+        );
         Ok(())
     }
 
@@ -171,11 +189,14 @@ impl Host {
 
         let Some(device) = state.device(&device_id) else {
             if let Some(gone) = self.store.forgotten(&device_id) {
-                return self.tell_forgotten(io, &gone.key, &phone_nonce, &state).await;
+                return self
+                    .tell_forgotten(io, &gone.key, &phone_nonce, &state)
+                    .await;
             }
             // "mac" lets the phone tell this apart from another host now answering at that address.
             let mut io = io;
-            io.write_json(&json!({ "t": "error", "code": "unpaired", "mac": state.id })).await?;
+            io.write_json(&json!({ "t": "error", "code": "unpaired", "mac": state.id }))
+                .await?;
             return Ok(());
         };
         let pair_key = device.pair_key()?;
@@ -212,9 +233,18 @@ impl Host {
                     return Err(e);
                 }
             }
-            "getclip" => self.send_clipboard(&mut reader, &mut writer, &state.name).await?,
-            "inbox" => self.send_inbox(&mut reader, &mut writer, &device.name).await?,
-            "watch" => self.watch(&state, &device_id, &device.name, reader, writer).await?,
+            "getclip" => {
+                self.send_clipboard(&mut reader, &mut writer, &state.name)
+                    .await?
+            }
+            "inbox" => {
+                self.send_inbox(&mut reader, &mut writer, &device.name)
+                    .await?
+            }
+            "watch" => {
+                self.watch(&state, &device_id, &device.name, reader, writer)
+                    .await?
+            }
             "names" => {
                 let answer = self
                     .store
@@ -226,7 +256,10 @@ impl Host {
             "unpair" => {
                 self.store.remove_device(&device_id);
                 writer.send_json(&json!({ "t": "ok" })).await?;
-                notify::send("Oublié", &format!("{} a oublié cet ordinateur", device.name));
+                notify::send(
+                    "Oublié",
+                    &format!("{} a oublié cet ordinateur", device.name),
+                );
             }
             other => anyhow::bail!("unknown request {other:?}"),
         }
@@ -257,7 +290,11 @@ impl Host {
         let mut reader = SecureChannel::new(reader, &key, DIR_HOST_TO_PHONE, DIR_PHONE_TO_HOST);
         let mut writer = SecureChannel::new(writer, &key, DIR_HOST_TO_PHONE, DIR_PHONE_TO_HOST);
         let request = reader.recv_json().await?; // proves the phone still holds the old key
-        let reply = if request["t"] == "unpair" { json!({ "t": "ok" }) } else { json!({ "t": "forgotten" }) };
+        let reply = if request["t"] == "unpair" {
+            json!({ "t": "ok" })
+        } else {
+            json!({ "t": "forgotten" })
+        };
         writer.send_json(&reply).await?;
         Ok(())
     }
@@ -300,7 +337,11 @@ impl Host {
                                     total_received += d.len() as u64;
                                     if last_progress.elapsed().as_millis() >= 120 {
                                         last_progress = std::time::Instant::now();
-                                        self.island.progress(total_received, total_bytes.max(0) as u64, name);
+                                        self.island.progress(
+                                            total_received,
+                                            total_bytes.max(0) as u64,
+                                            name,
+                                        );
                                     }
                                 }
                                 Msg::Json(eof) => {
@@ -333,21 +374,23 @@ impl Host {
             }
         }
 
-        eprintln!(
+        crate::trace_debug!(
             "tapdrop: lot de {from} : {} fichier(s), {} texte(s), {} image(s)",
             files.len(),
             texts.len(),
             ocr.len()
         );
         for (text, _, otp) in &texts {
-            eprintln!(
+            crate::trace_debug!(
                 "tapdrop: texte reçu ({}) : {}",
                 otp.as_deref().unwrap_or("normal"),
                 text.chars().take(90).collect::<String>()
             );
         }
         let saved = files.len() + texts.len();
-        writer.send_json(&json!({ "t": "ok", "saved": saved + ocr.len() })).await?;
+        writer
+            .send_json(&json!({ "t": "ok", "saved": saved + ocr.len() }))
+            .await?;
         if let Some((code, _, Some(source))) = texts.iter().find(|t| t.2.is_some()) {
             self.island.code(source, code);
         }
@@ -369,9 +412,22 @@ impl Host {
                 .unwrap_or_default(),
             n => format!("{n} fichiers"),
         };
-        deliver(from, &state_name, files, images_for_clipboard, texts, ocr, open_links).await;
+        deliver(
+            from,
+            &state_name,
+            files,
+            images_for_clipboard,
+            texts,
+            ocr,
+            open_links,
+        )
+        .await;
         if !has_otp {
-            self.island.saved("Enregistré", &format!("{summary} · {folder_name}"), first.as_deref());
+            self.island.saved(
+                "Enregistré",
+                &format!("{summary} · {folder_name}"),
+                first.as_deref(),
+            );
         }
         Ok(())
     }
@@ -396,7 +452,8 @@ impl Host {
                 }
             }
             Snapshot::Image(png) => {
-                let path = std::env::temp_dir().join(format!("tapdrop-clip-{}.png", uuid::Uuid::new_v4()));
+                let path =
+                    std::env::temp_dir().join(format!("tapdrop-clip-{}.png", uuid::Uuid::new_v4()));
                 tokio::fs::write(&path, png).await?;
                 items.push(OutgoingItem::File {
                     path: path.clone(),
@@ -429,18 +486,23 @@ impl Host {
                     items.push(item);
                 }
             } else if let Some(text) = &q.text {
-                items.push(OutgoingItem::Text { text: text.clone(), clip: true });
+                items.push(OutgoingItem::Text {
+                    text: text.clone(),
+                    clip: true,
+                });
             }
         }
         let count = items.len();
         if count > 0 {
             self.island.sending(to, &format!("{count} élément(s)"));
         }
-        self.send_batch(reader, writer, items, &self.store.snapshot().name).await?;
+        self.send_batch(reader, writer, items, &self.store.snapshot().name)
+            .await?;
         let ids: Vec<String> = queued.iter().map(|q| q.id.clone()).collect();
         self.store.dequeue(&ids);
         if count > 0 {
-            self.island.done("Envoyé", &format!("{count} élément(s) vers {to}"));
+            self.island
+                .done("Envoyé", &format!("{count} élément(s) vers {to}"));
             notify::send("Envoyé", &format!("{count} élément(s) vers {to}"));
         }
         Ok(())
@@ -484,7 +546,9 @@ impl Host {
                     writer.send_json(&json!({ "t": "eof" })).await?;
                 }
                 OutgoingItem::Text { text, clip } => {
-                    writer.send_json(&json!({ "t": "text", "text": text, "clip": clip })).await?;
+                    writer
+                        .send_json(&json!({ "t": "text", "text": text, "clip": clip }))
+                        .await?;
                 }
             }
         }
@@ -531,13 +595,22 @@ impl Host {
     /// Wakes a phone's live link because something is now queued for it.
     pub async fn announce_inbox(&self) {
         let pending = self.store.outbox_len();
-        self.hub.push_all(json!({ "t": "inbox", "pending": pending })).await;
+        self.hub
+            .push_all(json!({ "t": "inbox", "pending": pending }))
+            .await;
     }
 }
 
 enum OutgoingItem {
-    File { path: PathBuf, name: String, clip: bool },
-    Text { text: String, clip: bool },
+    File {
+        path: PathBuf,
+        name: String,
+        clip: bool,
+    },
+    Text {
+        text: String,
+        clip: bool,
+    },
 }
 
 impl OutgoingItem {
@@ -609,7 +682,8 @@ async fn deliver(
             }
             None => {
                 if let Ok(bytes) = tokio::fs::read(image).await {
-                    let _ = tokio::task::spawn_blocking(move || clipboard::write_image(&bytes)).await;
+                    let _ =
+                        tokio::task::spawn_blocking(move || clipboard::write_image(&bytes)).await;
                     notes.push("Image copiée".to_string());
                 }
             }
@@ -735,5 +809,9 @@ pub async fn serve(host: Arc<Host>, preferred_port: u16) -> anyhow::Result<u16> 
 
 /// One item waiting for the phone, stamped so the queue can be told apart.
 pub fn new_queue_item(path: Option<PathBuf>, text: Option<String>) -> QueuedItem {
-    QueuedItem { id: format!("{}-{}", now(), uuid::Uuid::new_v4()), path, text }
+    QueuedItem {
+        id: format!("{}-{}", now(), uuid::Uuid::new_v4()),
+        path,
+        text,
+    }
 }

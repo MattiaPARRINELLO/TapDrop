@@ -11,6 +11,7 @@ mod files;
 mod iio;
 mod island;
 mod lightkey;
+mod logging;
 mod mdns;
 mod net;
 mod notify;
@@ -86,8 +87,8 @@ async fn run(auto_pair: bool) -> Result<()> {
     let hub = watch::Hub::new(sensors.is_some());
     let tap = tap::TapService::new(hub.clone(), camera, island.clone());
     let tapping = tap.clone();
-    if sensors.is_some() {
-        start_tap(sensors.expect("checked just above"), tapping);
+    if let Some(paths) = sensors {
+        start_tap(paths, tapping);
     }
     let pending = server::PendingPairs::new();
     let host = Arc::new(server::Host {
@@ -114,12 +115,19 @@ async fn run(auto_pair: bool) -> Result<()> {
 
     tokio::spawn(tray::start(host.clone(), store.clone(), shutdown.clone()));
 
-    println!("TapDrop écoute sur le port {port}, visible comme « {} ».", state.name);
+    println!(
+        "TapDrop écoute sur le port {port}, visible comme « {} ».",
+        state.name
+    );
     if hub.notch {
         if tap.uses_camera() {
-            println!("Tap disponible : la webcam sert de capteur (sa LED s'allume pendant un tap).");
+            println!(
+                "Tap disponible : la webcam sert de capteur (sa LED s'allume pendant un tap)."
+            );
         } else {
-            println!("Tap disponible via le capteur de lumière (une mesure par seconde, moins fiable).");
+            println!(
+                "Tap disponible via le capteur de lumière (une mesure par seconde, moins fiable)."
+            );
         }
     } else {
         println!("Pas de capteur de lumière : partage seulement, le tap est indisponible.");
@@ -127,7 +135,15 @@ async fn run(auto_pair: bool) -> Result<()> {
     if state.devices.is_empty() {
         println!("Aucun téléphone appairé : ouvre TapDrop sur Android et choisis cet ordinateur.");
     } else {
-        println!("Appairé : {}.", state.devices.iter().map(|d| d.name.as_str()).collect::<Vec<_>>().join(", "));
+        println!(
+            "Appairé : {}.",
+            state
+                .devices
+                .iter()
+                .map(|d| d.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 
     tokio::select! {
@@ -141,7 +157,9 @@ async fn run(auto_pair: bool) -> Result<()> {
 
 /// The island draws in its own process: GTK wants the main thread, the service needs it for tokio.
 fn start_island() {
-    let Ok(exe) = std::env::current_exe() else { return };
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
     let _ = std::process::Command::new(exe)
         .arg("island")
         .stdout(std::process::Stdio::null())
@@ -184,12 +202,20 @@ async fn call(request: Value) -> Option<Value> {
 }
 
 async fn show_status() {
-    let Some(status) = call(json!({ "cmd": "status" })).await else { return };
+    let Some(status) = call(json!({ "cmd": "status" })).await else {
+        return;
+    };
     println!("Nom     : {}", status["name"].as_str().unwrap_or("?"));
     println!("Port    : {}", status["port"]);
-    println!("Dossier : {}", status["save_folder"].as_str().unwrap_or("?"));
+    println!(
+        "Dossier : {}",
+        status["save_folder"].as_str().unwrap_or("?")
+    );
     println!("File    : {} élément(s)", status["outbox"]);
-    println!("Appairés: {}", status["devices"].as_array().map(|a| a.len()).unwrap_or(0));
+    println!(
+        "Appairés: {}",
+        status["devices"].as_array().map(|a| a.len()).unwrap_or(0)
+    );
     for device in status["devices"].as_array().cloned().unwrap_or_default() {
         println!(
             "  - {} ({}){}",
@@ -224,7 +250,11 @@ async fn send(paths: &[String]) -> Option<Value> {
         .filter(|p| !p.starts_with("--"))
         .map(|p| {
             let expanded = match p.strip_prefix("~/") {
-                Some(rest) => dirs::home_dir().unwrap_or_default().join(rest).display().to_string(),
+                Some(rest) => dirs::home_dir()
+                    .unwrap_or_default()
+                    .join(rest)
+                    .display()
+                    .to_string(),
                 None => p.clone(),
             };
             expanded
@@ -235,19 +265,26 @@ async fn send(paths: &[String]) -> Option<Value> {
         eprintln!("usage : tapdrop send <fichier…> [--clipboard]");
         return None;
     }
-    let answer = call(json!({ "cmd": "send", "paths": paths, "clipboard": wants_clipboard })).await?;
+    let answer =
+        call(json!({ "cmd": "send", "paths": paths, "clipboard": wants_clipboard })).await?;
     println!("{} élément(s) en file pour le téléphone.", answer["queued"]);
     Some(answer)
 }
 
 async fn list_pending() {
-    let Some(answer) = call(json!({ "cmd": "pending" })).await else { return };
+    let Some(answer) = call(json!({ "cmd": "pending" })).await else {
+        return;
+    };
     let pending = answer["pending"].as_array().cloned().unwrap_or_default();
     if pending.is_empty() {
         println!("Aucun appairage en attente.");
     }
     for p in pending {
-        println!("{} demande le code {}", p["device"].as_str().unwrap_or("?"), p["code"].as_str().unwrap_or("?"));
+        println!(
+            "{} demande le code {}",
+            p["device"].as_str().unwrap_or("?"),
+            p["code"].as_str().unwrap_or("?")
+        );
     }
 }
 
@@ -256,7 +293,9 @@ async fn decide(command: &str, args: &[String]) {
         eprintln!("usage : tapdrop {command} <code>");
         return;
     };
-    let Some(answer) = call(json!({ "cmd": command, "code": code })).await else { return };
+    let Some(answer) = call(json!({ "cmd": command, "code": code })).await else {
+        return;
+    };
     if answer["ok"].as_bool().unwrap_or(false) {
         println!("Fait.");
     } else {
@@ -265,13 +304,19 @@ async fn decide(command: &str, args: &[String]) {
 }
 
 async fn list_devices() {
-    let Some(answer) = call(json!({ "cmd": "status" })).await else { return };
+    let Some(answer) = call(json!({ "cmd": "status" })).await else {
+        return;
+    };
     let devices = answer["devices"].as_array().cloned().unwrap_or_default();
     if devices.is_empty() {
         println!("Aucun téléphone appairé.");
     }
     for d in devices {
-        println!("{} — {}", d["name"].as_str().unwrap_or("?"), d["id"].as_str().unwrap_or("?"));
+        println!(
+            "{} — {}",
+            d["name"].as_str().unwrap_or("?"),
+            d["id"].as_str().unwrap_or("?")
+        );
     }
 }
 
@@ -280,8 +325,17 @@ async fn rename(args: &[String]) {
         eprintln!("usage : tapdrop rename <nom>");
         return;
     };
-    let Some(answer) = call(json!({ "cmd": "rename", "name": name })).await else { return };
-    println!("{}", if answer["ok"].as_bool().unwrap_or(false) { "Renommé." } else { "Nom refusé." });
+    let Some(answer) = call(json!({ "cmd": "rename", "name": name })).await else {
+        return;
+    };
+    println!(
+        "{}",
+        if answer["ok"].as_bool().unwrap_or(false) {
+            "Renommé."
+        } else {
+            "Nom refusé."
+        }
+    );
 }
 
 async fn folder(args: &[String]) {
@@ -289,11 +343,19 @@ async fn folder(args: &[String]) {
         eprintln!("usage : tapdrop folder <chemin>");
         return;
     };
-    let Some(answer) = call(json!({ "cmd": "folder", "path": path })).await else { return };
+    let Some(answer) = call(json!({ "cmd": "folder", "path": path })).await else {
+        return;
+    };
     if answer["ok"].as_bool().unwrap_or(false) {
-        println!("Les fichiers arriveront dans {}.", answer["path"].as_str().unwrap_or(path));
+        println!(
+            "Les fichiers arriveront dans {}.",
+            answer["path"].as_str().unwrap_or(path)
+        );
     } else {
-        eprintln!("Dossier refusé : {}", answer["error"].as_str().unwrap_or("?"));
+        eprintln!(
+            "Dossier refusé : {}",
+            answer["error"].as_str().unwrap_or("?")
+        );
     }
 }
 

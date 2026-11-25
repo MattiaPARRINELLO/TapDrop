@@ -218,17 +218,50 @@ impl View {
         let title = measure_line(area, &self.title, title_size, true, -0.35);
         let detail = measure_line(area, &self.detail, detail_size, false, -0.15);
         let text = title.max(detail);
-        let width = if self.kind == Kind::Code { text + 78.0 } else { text + 72.0 };
-        self.target_width = width.clamp(if self.kind == Kind::Code { 300.0 } else { 320.0 }, 520.0);
+        let width = if self.kind == Kind::Code {
+            text + 78.0
+        } else {
+            text + 72.0
+        };
+        self.target_width = width.clamp(
+            if self.kind == Kind::Code {
+                300.0
+            } else {
+                320.0
+            },
+            520.0,
+        );
 
         // Build the layouts once here: drawing at 120 Hz only shows them.
         let inner = (self.target_width - 66.0).max(24.0);
-        self.layouts.title = Some(make_layout(area, &self.title, title_size, true, -0.35, inner));
-        self.layouts.detail = Some(make_layout(area, &self.detail, detail_size, false, -0.15, inner));
+        self.layouts.title = Some(make_layout(
+            area,
+            &self.title,
+            title_size,
+            true,
+            -0.35,
+            inner,
+        ));
+        self.layouts.detail = Some(make_layout(
+            area,
+            &self.detail,
+            detail_size,
+            false,
+            -0.15,
+            inner,
+        ));
         if !self.prev_title.is_empty() {
             let (pt, pd) = sizes_for(self.prev_kind);
-            self.layouts.prev_title = Some(make_layout(area, &self.prev_title, pt, true, -0.35, inner));
-            self.layouts.prev_detail = Some(make_layout(area, &self.prev_detail, pd, false, -0.15, inner));
+            self.layouts.prev_title =
+                Some(make_layout(area, &self.prev_title, pt, true, -0.35, inner));
+            self.layouts.prev_detail = Some(make_layout(
+                area,
+                &self.prev_detail,
+                pd,
+                false,
+                -0.15,
+                inner,
+            ));
         }
     }
 }
@@ -287,7 +320,7 @@ impl Push {
 
     /// The same, with the file a click on the island should open.
     pub fn saved(&self, title: &str, detail: &str, target: Option<&std::path::Path>) {
-        eprintln!("tapdrop: îlot -> {title} ({detail})");
+        crate::trace_debug!("tapdrop: îlot -> {title} ({detail})");
         self.send(json!({
             "t": "done", "title": title, "detail": detail,
             "target": target.map(|p| p.display().to_string()).unwrap_or_default(),
@@ -386,7 +419,14 @@ fn build(app: &gtk::Application) {
         let pill = pill.clone();
         let pointer = pointer.clone();
         move |area, cr, _w, _h| {
-            draw(area, cr, &view.borrow(), &motion.borrow(), &pill, pointer.get());
+            draw(
+                area,
+                cr,
+                &view.borrow(),
+                &motion.borrow(),
+                &pill,
+                pointer.get(),
+            );
         }
     });
 
@@ -491,7 +531,7 @@ fn build(app: &gtk::Application) {
                 }
             }
             if let Some(surface) = window_for_region.surface() {
-                let scale = area.scale_factor().max(1) as i32;
+                let scale = area.scale_factor().max(1);
                 let rect = if view.borrow().visible {
                     pill.get()
                 } else {
@@ -661,14 +701,14 @@ fn draw(
     let hover = motion.hover.value.clamp(0.0, 1.0);
     let scale = 1.0 + 0.012 * hover;
     let width = motion.width.value.max(24.0) * scale;
-    let height = (motion.height.value.max(2.0) * open.max(0.0).min(1.2)) * scale;
+    let height = (motion.height.value.max(2.0) * open.clamp(0.0, 1.2)) * scale;
     let x = (SURFACE_WIDTH as f64 - width) / 2.0 + motion.shake.value;
     let y = PILL_TOP - 1.2 * hover;
     let radius = height / 2.0;
     pill.set(Some((x as i32, y as i32, width as i32, height as i32)));
 
     let accent = mix(accent_of(view.prev_kind), accent_of(view.kind), morph);
-    let pulse = (motion.open.value.max(0.0)).min(1.0);
+    let pulse = motion.open.value.clamp(0.0, 1.0);
 
     // A halo in the state's colour: what makes the pill feel alive on a dark panel.
     for (spread, strength) in [(10.0, 0.012), (6.0, 0.017), (3.0, 0.022)] {
@@ -736,7 +776,14 @@ fn draw(
     let _ = cr.save();
     rounded_rect(cr, x, y, width, height, radius);
     cr.clip();
-    rounded_rect(cr, x + 0.7, y + 0.7, width - 1.4, height - 1.4, radius - 0.7);
+    rounded_rect(
+        cr,
+        x + 0.7,
+        y + 0.7,
+        width - 1.4,
+        height - 1.4,
+        radius - 0.7,
+    );
     let _ = cr.set_source(&edge);
     cr.set_line_width(1.0);
     let _ = cr.stroke();
@@ -794,7 +841,6 @@ fn draw(
             elapsed,
             hover,
             1.0,
-            motion.check.value,
         );
     }
     let bob = if view.kind == Kind::Receive && view.progress.is_some() {
@@ -811,21 +857,14 @@ fn draw(
         elapsed,
         hover,
         motion.check.value,
-        motion.check.value,
     );
 
     let text_x = x + 46.0;
 
     // The pointer light: a soft radial highlight under the cursor while hovering.
     if hover > 0.02 {
-        let light = cairo::RadialGradient::new(
-            pointer.0,
-            pointer.1,
-            0.0,
-            pointer.0,
-            pointer.1,
-            150.0,
-        );
+        let light =
+            cairo::RadialGradient::new(pointer.0, pointer.1, 0.0, pointer.0, pointer.1, 150.0);
         light.add_color_stop_rgba(0.0, 1.0, 1.0, 1.0, 0.07 * hover * alpha);
         light.add_color_stop_rgba(1.0, 1.0, 1.0, 1.0, 0.0);
         let _ = cr.save();
@@ -976,7 +1015,6 @@ fn attrs_for(size: i32, bold: bool, spacing: f64) -> pango::AttrList {
     attrs
 }
 
-#[allow(clippy::too_many_arguments)]
 /// The icon of each state: breathing rings while something lands, a check that draws itself when
 /// a transfer lands, and the plain glyphs in between.
 #[allow(clippy::too_many_arguments)]
@@ -989,7 +1027,6 @@ fn state_icon(
     elapsed: f64,
     hover: f64,
     sweep: f64,
-    check: f64,
 ) {
     let color = accent_of(kind);
     if kind == Kind::Detect {
@@ -1013,7 +1050,7 @@ fn state_icon(
     }
     if kind == Kind::Done {
         // A single expanding ring, then the check traces itself.
-        let ring = check.clamp(0.0, 1.0);
+        let ring = sweep.clamp(0.0, 1.0);
         cr.set_source_rgba(color.0, color.1, color.2, 0.30 * (1.0 - ring) * alpha);
         cr.set_line_width(1.4);
         cr.arc(cx, cy, radius + 6.0 * ring, 0.0, std::f64::consts::TAU);

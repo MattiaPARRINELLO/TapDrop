@@ -4,8 +4,8 @@
 //! service keeps running in the background.
 
 use crate::control;
-use gtk::prelude::*;
 use gtk::glib;
+use gtk::prelude::*;
 use gtk4 as gtk;
 use serde_json::{json, Value};
 

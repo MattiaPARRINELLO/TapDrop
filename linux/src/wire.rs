@@ -103,7 +103,6 @@ impl<S> SecureChannel<S> {
             recv_counter: 0,
         }
     }
-
 }
 
 impl<S: AsyncWrite + Unpin> SecureChannel<S> {
@@ -128,7 +127,6 @@ impl<S: AsyncWrite + Unpin> SecureChannel<S> {
             .map_err(|_| anyhow::anyhow!("frame encryption failed"))?;
         self.io.write_frame(&sealed).await
     }
-
 }
 
 impl<S: AsyncRead + Unpin> SecureChannel<S> {
@@ -185,7 +183,10 @@ mod tests {
         let mut phone_ch = SecureChannel::new(phone, &key, DIR_PHONE_TO_HOST, DIR_HOST_TO_PHONE);
         let mut host_ch = SecureChannel::new(host, &key, DIR_HOST_TO_PHONE, DIR_PHONE_TO_HOST);
 
-        phone_ch.send_json(&json!({"t": "send", "count": 1})).await.unwrap();
+        phone_ch
+            .send_json(&json!({"t": "send", "count": 1}))
+            .await
+            .unwrap();
         phone_ch.send_data(b"file bytes").await.unwrap();
         let first = host_ch.recv_json().await.unwrap();
         assert_eq!(first["count"], 1);
@@ -194,7 +195,10 @@ mod tests {
             other => panic!("expected data, got {other:?}"),
         }
 
-        host_ch.send_json(&json!({"t": "ok", "saved": 1})).await.unwrap();
+        host_ch
+            .send_json(&json!({"t": "ok", "saved": 1}))
+            .await
+            .unwrap();
         assert_eq!(phone_ch.recv_json().await.unwrap()["saved"], 1);
     }
 

@@ -46,10 +46,14 @@ impl Paths {
         let root = Path::new("/sys/bus/iio/devices");
         let mut als = None;
         let mut prox = Vec::new();
-        let entries = std::fs::read_dir(root).with_context(|| format!("reading {}", root.display()))?;
+        let entries =
+            std::fs::read_dir(root).with_context(|| format!("reading {}", root.display()))?;
         for entry in entries.flatten() {
             let dir = entry.path();
-            let name = std::fs::read_to_string(dir.join("name")).unwrap_or_default().trim().to_string();
+            let name = std::fs::read_to_string(dir.join("name"))
+                .unwrap_or_default()
+                .trim()
+                .to_string();
             match name.as_str() {
                 "als" if als.is_none() => {
                     if dir.join("in_illuminance_raw").exists() {
@@ -78,7 +82,11 @@ impl Paths {
     pub fn read_prox(&self) -> Option<Proximity> {
         let raw = read_f32(&self.prox_raw)?;
         // 0 is "something is right there"; anything else is a sane distance.
-        Some(if raw == 0.0 { Proximity::Near } else { Proximity::Far })
+        Some(if raw == 0.0 {
+            Proximity::Near
+        } else {
+            Proximity::Far
+        })
     }
 }
 
@@ -117,7 +125,14 @@ pub async fn run(paths: Paths, tx: tokio::sync::mpsc::Sender<Event>) {
             let moved = last_lux.map(|l| (l - lux).abs() >= 0.5).unwrap_or(true);
             if moved {
                 last_lux = Some(lux);
-                if tx.send(Event::Light(Lux { lux, at: Instant::now() })).await.is_err() {
+                if tx
+                    .send(Event::Light(Lux {
+                        lux,
+                        at: Instant::now(),
+                    }))
+                    .await
+                    .is_err()
+                {
                     return;
                 }
             }

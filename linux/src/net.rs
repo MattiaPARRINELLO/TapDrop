@@ -23,7 +23,8 @@ impl Address {
 /// that often is pure waste.
 pub fn reachable() -> Vec<Address> {
     use std::sync::{Mutex, OnceLock};
-    static CACHE: OnceLock<Mutex<Option<(std::time::Instant, Vec<Address>)>>> = OnceLock::new();
+    type Cache = Mutex<Option<(std::time::Instant, Vec<Address>)>>;
+    static CACHE: OnceLock<Cache> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(None));
     if let Ok(guard) = cache.lock() {
         if let Some((at, list)) = guard.as_ref() {
@@ -63,7 +64,11 @@ fn parse_line(line: &str) -> Option<Address> {
     let mut parts = line.split_whitespace();
     let first = parts.next()?;
     // `ip -o` prefixes each line with its index: "2: wlan0 inet …".
-    let iface = if first.trim_end_matches(':').chars().all(|c| c.is_ascii_digit()) {
+    let iface = if first
+        .trim_end_matches(':')
+        .chars()
+        .all(|c| c.is_ascii_digit())
+    {
         parts.next()?.to_string()
     } else {
         first.trim_end_matches(':').to_string()

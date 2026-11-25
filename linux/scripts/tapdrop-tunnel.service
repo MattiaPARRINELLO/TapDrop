@@ -1,11 +1,18 @@
+# Reverse SSH tunnel for the TapDrop relay.
+#
+# Adapte les deux marqueurs, puis installe le fichier dans ~/.config/systemd/user/ :
+#   systemctl --user daemon-reload && systemctl --user enable --now tapdrop-tunnel
+#
+# Le PC garde une connexion sortante et publie le port 47913 sur le serveur, que
+# scripts/relay-ssh.sh expose ensuite au téléphone.
+
 [Unit]
-Description=TapDrop reverse tunnel vers le serveur Oracle
-Documentation=https://github.com/0x1p0/TapDrop
+Description=TapDrop reverse tunnel (relais SSH vers le serveur)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -i "/home/mattia/Bureau/Oracle Server/ssh-key-2026-08-21.key" -R 127.0.0.1:47914:localhost:47913 ubuntu@88.96.58.75
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -i %h/.ssh/REMPLACE_CLE -R 127.0.0.1:47914:localhost:47913 REMPLACE_UTILISATEUR@REMPLACE_HOTE
 Restart=always
 RestartSec=5
 

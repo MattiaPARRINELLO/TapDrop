@@ -47,13 +47,13 @@ const ROUND_COOLDOWN: Duration = Duration::from_millis(1500);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Stage {
     /// The grab is out; the phone has not said it lit up.
-    AwaitKeyOn,
+    KeyOn,
     /// The phone is white; the light has to be seen.
-    AwaitSeen,
+    Seen,
     /// The light was seen; the phone is turning black.
-    AwaitKeyOff,
+    KeyOff,
     /// The phone is black; the dark echo has to be seen.
-    AwaitEcho,
+    Echo,
 }
 
 struct Round {
@@ -115,13 +115,13 @@ impl LightKey {
             eprintln!(
                 "tapdrop: round {} {:?} voit {:.0} lx à +{} ms",
                 round.id,
-                stage.unwrap_or(Stage::AwaitKeyOn),
+                stage.unwrap_or(Stage::KeyOn),
                 reading.lux,
                 reading.at.duration_since(round.started).as_millis()
             );
         }
         match stage {
-            Some(Stage::AwaitSeen) => {
+            Some(Stage::Seen) => {
                 let seen = self
                     .round
                     .as_ref()
@@ -131,7 +131,7 @@ impl LightKey {
                     return Vec::new();
                 }
                 let round = self.round.as_mut().expect("a round is running");
-                round.stage = Stage::AwaitKeyOff;
+                round.stage = Stage::KeyOff;
                 round.deadline = reading.at + KEY_OFF_WINDOW;
                 vec![Action {
                     device_id: round.device_id.clone(),
@@ -141,7 +141,7 @@ impl LightKey {
                     }),
                 }]
             }
-            Some(Stage::AwaitEcho) => {
+            Some(Stage::Echo) => {
                 let Some(fall) = self.echo_verdict(reading.lux) else {
                     return Vec::new();
                 };
@@ -210,7 +210,7 @@ impl LightKey {
             return Vec::new();
         }
         match message["t"].as_str().unwrap_or("") {
-            "key-on" if round.stage == Stage::AwaitKeyOn => {
+            "key-on" if round.stage == Stage::KeyOn => {
                 eprintln!(
                     "tapdrop: round {} écran allumé à +{} ms",
                     round.id,
@@ -220,24 +220,27 @@ impl LightKey {
                     return self.fail("screen-only", at);
                 }
                 let round = self.round.as_mut().expect("a round is running");
-                round.stage = Stage::AwaitSeen;
+                round.stage = Stage::Seen;
                 round.deadline = at + SEEN_WINDOW;
                 Vec::new()
             }
-            "key-off" if matches!(round.stage, Stage::AwaitSeen | Stage::AwaitKeyOff) => {
+            "key-off" if matches!(round.stage, Stage::Seen | Stage::KeyOff) => {
                 eprintln!(
                     "tapdrop: round {} écran éteint à +{} ms",
                     round.id,
                     at.duration_since(round.started).as_millis()
                 );
                 let round = self.round.as_mut().expect("a round is running");
-                round.stage = Stage::AwaitEcho;
+                round.stage = Stage::Echo;
                 round.deadline = at + ECHO_WINDOW;
                 Vec::new()
             }
             "grab-ack" if message["ok"].as_bool() == Some(false) => {
                 let why = message["why"].as_str().unwrap_or("declined").to_string();
-                eprintln!("tapdrop: round {} refusé par le téléphone ({why})", round.id);
+                eprintln!(
+                    "tapdrop: round {} refusé par le téléphone ({why})",
+                    round.id
+                );
                 self.fail(&why, at)
             }
             _ => Vec::new(),
@@ -253,10 +256,10 @@ impl LightKey {
             return Vec::new();
         }
         let why = match round.stage {
-            Stage::AwaitKeyOn => "no-light-sent",
-            Stage::AwaitSeen => "not-seen",
-            Stage::AwaitKeyOff => "no-key-off",
-            Stage::AwaitEcho => "stayed-lit",
+            Stage::KeyOn => "no-light-sent",
+            Stage::Seen => "not-seen",
+            Stage::KeyOff => "no-key-off",
+            Stage::Echo => "stayed-lit",
         };
         self.fail(why, at)
     }
@@ -269,7 +272,7 @@ impl LightKey {
             id,
             device_id: phone.device_id.clone(),
             started: at,
-            stage: Stage::AwaitKeyOn,
+            stage: Stage::KeyOn,
             deadline: at + KEY_ON_WINDOW,
             need,
             peak: 0.0,
@@ -351,7 +354,7 @@ fn median(values: &VecDeque<f32>) -> f32 {
     let mut sorted: Vec<f32> = values.iter().copied().collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 {
+    if sorted.len().is_multiple_of(2) {
         (sorted[mid - 1] + sorted[mid]) / 2.0
     } else {
         sorted[mid]

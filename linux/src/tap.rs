@@ -1,8 +1,8 @@
 //! Ties the sensors, the camera and the live links to the light key.
 
 use crate::camera;
-use crate::island::Push;
 use crate::iio::{Lux, Proximity};
+use crate::island::Push;
 use crate::lightkey::{Action, LightKey};
 use crate::watch::Hub;
 use serde_json::Value;
@@ -105,7 +105,11 @@ impl TapService {
         tokio::spawn(async move {
             let deadline = Instant::now() + CAMERA_LIMIT;
             while let Some(mean) = rx.recv().await {
-                this.lux(Lux { lux: mean * CAMERA_TO_LUX, at: Instant::now() }).await;
+                this.lux(Lux {
+                    lux: mean * CAMERA_TO_LUX,
+                    at: Instant::now(),
+                })
+                .await;
                 let running = this.key.lock().unwrap().round_running();
                 if !running || Instant::now() > deadline {
                     break;
@@ -122,7 +126,9 @@ impl TapService {
                     self.island.hint(hint);
                 }
             }
-            self.hub.push_device(&action.device_id, action.message).await;
+            self.hub
+                .push_device(&action.device_id, action.message)
+                .await;
         }
     }
 }
