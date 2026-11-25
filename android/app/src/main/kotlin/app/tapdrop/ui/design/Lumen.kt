@@ -179,7 +179,7 @@ fun LightSpill(modifier: Modifier = Modifier, strength: Float = 1f) {
     }
 }
 
-/** A hero title: the last word in the serif's italic, with a full stop ("Pair with your *Mac.*"). */
+/** A hero title: the last word in the serif's italic, with a full stop ("Pair with your *computer.*"). */
 fun litTitle(text: String): androidx.compose.ui.text.AnnotatedString {
     val t = text.trimEnd('.')
     val i = t.lastIndexOf(' ')

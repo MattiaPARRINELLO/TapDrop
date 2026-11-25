@@ -133,7 +133,7 @@ fun TapTestScreen(onClose: () -> Unit, onSetup: () -> Unit) {
     val roomDark by NotchTapService.roomDark.collectAsStateWithLifecycle()
     val lux by NotchTapService.lux.collectAsStateWithLifecycle()
     val lastTap by NotchTapService.lastTap.collectAsStateWithLifecycle()
-    val macName = macs.firstOrNull()?.name ?: "your Mac"
+    val macName = macs.firstOrNull()?.name ?: "your computer"
 
     // The Mac streams its notch light to this phone only while this screen is in front.
     LifecycleResumeEffect(Unit) {
@@ -279,19 +279,19 @@ private class Explained(val outcome: Outcome, val title: String, val body: Strin
 private fun explain(t: TapTrace): Explained {
     if (t.ok) return Explained(
         Outcome.Counted, "That counted",
-        "Your Mac saw your screen light up and go dark. In any other app, this tap sends what's on screen.",
+        "Your computer saw your screen light up and go dark. In any other app, this tap sends what's on screen.",
     )
     return when (t.why) {
         "calibrating" -> Explained(
             Outcome.Calibrating, "Calibrating",
-            "Your Mac used that tap to learn your screen's light. Nothing was sent.",
+            "Your computer used that tap to learn your screen's light. Nothing was sent.",
         )
-        "not-seen", "no-light-sent" -> Explained(Outcome.Failed, "Your Mac didn't see your screen", "Press the top of the screen flat on the notch.")
+        "not-seen", "no-light-sent" -> Explained(Outcome.Failed, "Your computer didn't see your screen", "Press the top of the screen flat on the camera bar.")
         "stayed-lit", "no-key-off", "early-ok" -> Explained(Outcome.Failed, "Almost", TapCopy.KEEP_ON)
-        "facing", "screen-only" -> Explained(Outcome.Failed, "Turn your phone around", "Its screen goes against the notch.")
+        "facing", "screen-only" -> Explained(Outcome.Failed, "Turn your phone around", "Its screen goes against the camera bar.")
         "still" -> Explained(
             Outcome.Ignored, "Ignored: your phone was still",
-            "Something covered the notch while your phone lay still. That's how a hand is kept from sending.",
+            "Something covered the camera bar while your phone lay still. That's how a hand is kept from sending.",
         )
         "locked" -> Explained(Outcome.Ignored, "Your phone was locked", "Unlock it, then tap.")
         "screen-off" -> Explained(Outcome.Ignored, "Your screen was off", "Turn the screen on, then tap.")
@@ -300,10 +300,10 @@ private fun explain(t: TapTrace): Explained {
         "cooldown" -> Explained(Outcome.Failed, "Too quick", TapCopy.TRY_AGAIN)
         "busy" -> Explained(Outcome.Failed, "TapDrop was busy", TapCopy.TRY_AGAIN)
         "no-light" -> Explained(Outcome.Failed, "Your screen couldn't light up", TapCopy.TRY_AGAIN)
-        "timeout" -> Explained(Outcome.Failed, "No answer from your Mac", "Check that your Mac is awake and on the same Wi‑Fi.")
+        "timeout" -> Explained(Outcome.Failed, "No answer from your computer", "Check that your computer is awake and on the same Wi‑Fi.")
         "update-mac" -> Explained(
-            Outcome.Failed, "Update TapDrop on your Mac",
-            "This Mac's TapDrop can't check the light yet. Update it to keep tapping.",
+            Outcome.Failed, "Update TapDrop on your computer",
+            "This computer's TapDrop can't check the light yet. Update it to keep tapping.",
         )
         else -> Explained(Outcome.Failed, "That tap didn't count", "Try again.")
     }
@@ -337,18 +337,18 @@ private fun LightCard(
     val (title, detail, tone) = when (state) {
         ScopeState.Off -> Triple("Tap to send is off", "Turn it on to test your tap.", StatusTone.Offline)
         ScopeState.Stalled -> Triple("Tap to send stopped", "Android stopped it. Turn it off and on in Accessibility.", StatusTone.Error)
-        ScopeState.Connecting -> Triple("Connecting to your Mac…", macName, StatusTone.Searching)
-        ScopeState.Unreachable -> Triple("Can't reach your Mac", "Open TapDrop on $macName, on the same Wi‑Fi as this phone.", StatusTone.Offline)
-        ScopeState.Reading -> Triple("Reading the notch's light…", macName, StatusTone.Searching)
+        ScopeState.Connecting -> Triple("Connecting to your computer…", macName, StatusTone.Searching)
+        ScopeState.Unreachable -> Triple("Can't reach your computer", "Open TapDrop on $macName, on the same Wi‑Fi as this phone.", StatusTone.Offline)
+        ScopeState.Reading -> Triple("Reading the camera bar's light…", macName, StatusTone.Searching)
         ScopeState.NoReadings -> Triple(
-            "No light readings from your Mac",
-            "Tapping needs a MacBook with a notch, running the latest TapDrop.",
+            "No light readings from your computer",
+            "Tapping needs a computer with a camera bar, running the latest TapDrop.",
             StatusTone.Offline,
         )
         ScopeState.Live -> Triple(
             when {
-                covered -> "Something's over the notch"
-                bright -> "Bright light at the notch"
+                covered -> "Something's over the camera bar"
+                bright -> "Bright light at the camera bar"
                 else -> "Watching for your screen's light"
             },
             "Live from $macName",
@@ -416,7 +416,7 @@ private fun NotchScope(
     val glow by animateFloatAsState(
         if (active) level else 0f,
         if (reduced) tween(120) else spring(dampingRatio = 0.9f, stiffness = 380f),
-        label = "notchGlow",
+        label = "camera barGlow",
     )
     val shade by animateFloatAsState(if (covered) 1f else 0f, if (reduced) tween(120) else spring(stiffness = 300f), label = "shade")
     val dim by animateFloatAsState(if (active) 0f else 1f, Td.spring(), label = "scopeDim")
@@ -450,7 +450,7 @@ private fun NotchScope(
     Canvas(
         modifier
             .aspectRatio(aspect)
-            .semantics { contentDescription = "Light at your Mac's notch, the last 12 seconds" },
+            .semantics { contentDescription = "Light at your computer's camera bar, the last 12 seconds" },
     ) {
         val w = size.width
         val h = size.height
@@ -757,12 +757,12 @@ private fun Waiting(canTap: Boolean, earlier: TapTrace?) {
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(
-                if (canTap) "Waiting for your tap" else "Ready when your Mac is",
+                if (canTap) "Waiting for your tap" else "Ready when your computer is",
                 style = TdType.subtitle, color = c.text,
             )
             Text(
                 if (canTap) "${TapCopy.PRIMARY} ${TapCopy.HOLD}"
-                else "Your taps show up here once the notch's light is live.",
+                else "Your taps show up here once the camera bar's light is live.",
                 style = TdType.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp),
             )
             if (earlier != null) {
@@ -874,7 +874,7 @@ private fun DetailsTable(t: Try, lightNow: Pair<Float, Float>?) {
     val time = remember(t.trace.at) { DateFormat.getTimeInstance(DateFormat.MEDIUM, Locale.getDefault()).format(Date(t.trace.at)) }
     val rows = buildList {
         add("Light used" to lightName(t.trace.src))
-        t.trace.peak?.let { add("Brightest at the notch" to luxText(it)) }
+        t.trace.peak?.let { add("Brightest at the camera bar" to luxText(it)) }
         t.trace.need?.let { if (it > 0f) add("Needed" to luxText(it)) }
         t.room?.let { add("Room light" to luxText(it)) }
         lightNow?.let { add("Light now" to luxText(it.first)) }

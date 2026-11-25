@@ -339,7 +339,7 @@ fun UpdateCard(modifier: Modifier = Modifier) {
                         Column(Modifier.weight(1f).padding(start = 14.dp)) {
                             Text("Updated to TapDrop $just", style = TdType.subtitle, color = c.text)
                             Text(
-                                "Your Mac and tap to send are just as you left them.",
+                                "Your computer and tap to send are just as you left them.",
                                 style = TdType.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 2.dp),
                             )
                         }

@@ -77,7 +77,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** What another app handed to "Send to Mac". [subject] is the page title browsers send with a link. */
+/** What another app handed to "Send to computer". [subject] is the page title browsers send with a link. */
 data class SharePayload(val uris: List<Uri>, val text: String?, val subject: String? = null) {
     companion object {
         fun from(intent: Intent?): SharePayload? {
@@ -407,8 +407,8 @@ private fun NoMacYet(onOpenApp: () -> Unit) {
     ) {
         MacGlyph(width = 50.dp, lit = false, dim = true)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text("No Mac paired yet", style = TdType.body.copy(fontWeight = FontWeight.SemiBold), color = c.text)
-            Text("Pair your Mac in TapDrop first.", style = TdType.bodySmall, color = c.textSecondary)
+            Text("No computer paired yet", style = TdType.body.copy(fontWeight = FontWeight.SemiBold), color = c.text)
+            Text("Pair your computer in TapDrop first.", style = TdType.bodySmall, color = c.textSecondary)
         }
     }
     Spacer(Modifier.height(16.dp))

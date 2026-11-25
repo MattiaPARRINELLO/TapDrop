@@ -134,8 +134,8 @@ object Compatibility {
     data class Group(val name: String, val models: String)
 
     const val androidVersions = "Android 13, 14, 15, 16 and newer"
-    const val macRequirement = "macOS 15 Sequoia or newer, on a Mac with Apple silicon (M1 or later)"
-    const val tested = "Works with Android 13 or newer from any brand. Tap to send needs a Mac with a notch."
+    const val macRequirement = "Linux, with TapDrop running on the same Wi-Fi"
+    const val tested = "Works with Android 13 or newer from any brand. Tap to send needs a computer with a camera bar."
 
     val pixels = listOf(
         "Pixel 10 · 10 Pro · 10 Pro XL · 10 Pro Fold",
@@ -169,25 +169,25 @@ object Compatibility {
     /** Tapping needs the light sensor in a MacBook's notch; everything else runs on any Apple silicon Mac. */
     val macs = listOf(
         MacGroup(
-            "MacBook Air and MacBook Pro with a notch",
-            "MacBook Air (M2 and later) · MacBook Pro 14″ and 16″ (2021 and later)",
+            "computer Air and computer Pro with a camera bar",
+            "computer Air (M2 and later) · computer Pro 14″ and 16″ (2021 and later)",
             "Tap to send, and everything else", tap = true,
         ),
         MacGroup(
-            "Other Macs with Apple silicon",
-            "MacBook Air (M1), 13″ MacBook Pro, iMac, Mac mini, Mac Studio and Mac Pro",
+            "Other computers with Apple silicon",
+            "computer Air (M1), 13″ computer Pro, icomputer, computer mini, computer Studio and computer Pro",
             "Sharing, codes and clipboard", tap = false,
         ),
-        MacGroup("Intel Macs", "TapDrop needs a universal build for them", "Not yet", tap = false, runs = false),
+        MacGroup("Intel computers", "TapDrop needs a universal build for them", "Not yet", tap = false, runs = false),
     )
 
     /** One thing a setup needs, and why. */
     data class Need(val title: String, val detail: String)
 
     val needs = listOf(
-        Need("Phone and Mac on the same Wi‑Fi", "Guest or hotel Wi‑Fi that keeps devices apart won't work"),
-        Need("TapDrop on both", "Paired once, with a 6-digit code from your Mac"),
-        Need("To tap: a MacBook with a notch", "And TapDrop turned on in Accessibility on your phone"),
+        Need("Phone and computer on the same Wi‑Fi", "Guest or hotel Wi‑Fi that keeps devices apart won't work"),
+        Need("TapDrop on both", "Paired once, with a 6-digit code from your computer"),
+        Need("To tap: a computer with a camera bar", "And TapDrop turned on in Accessibility on your phone"),
         Need("Photos & videos access", "So originals are sent instead of screenshots"),
     )
 }

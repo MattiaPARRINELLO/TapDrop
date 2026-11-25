@@ -432,7 +432,7 @@ class PickOverlay(private val svc: AccessibilityService) {
             }
             val sub = p.note ?: p.detail ?: when (p.kind) {
                 Kind.SCREEN -> if (done) null else "Or tap something to send just that"
-                Kind.SCREEN_TEXT -> "Your Mac reads it from a screenshot"
+                Kind.SCREEN_TEXT -> "Your computer reads it from a screenshot"
                 else -> null
             }
             return IslandContent(leadFor(p), title, sub, trail)
@@ -453,7 +453,7 @@ class PickOverlay(private val svc: AccessibilityService) {
                 words != null -> IslandContent(
                     Lead.Symbol(Icons.AutoMirrored.Rounded.Notes, Ink.violet),
                     "\u201C" + (if (words.length > 44) words.take(42).trimEnd() + "\u2026" else words) + "\u201D",
-                    if (done) "Copying it to your Mac" else "Lift your finger to copy it to your Mac",
+                    if (done) "Copying it to your computer" else "Lift your finger to copy it to your computer",
                     trail,
                     spoken = (if (done) "Copying " else "Copies ") + words,
                 )

@@ -363,7 +363,7 @@ fun TdSearchField(
     )
 }
 
-/** For the one destructive action of a view ("Forget this Mac"): a tonal red pill, the size of [SecondaryButton]. */
+/** For the one destructive action of a view ("Forget this computer"): a tonal red pill, the size of [SecondaryButton]. */
 @Composable
 fun DestructiveButton(
     text: String,

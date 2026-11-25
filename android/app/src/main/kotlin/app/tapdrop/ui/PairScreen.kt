@@ -143,7 +143,7 @@ fun PairScreen(onPaired: (SavedMac) -> Unit, onClose: (() -> Unit)? = null) {
         onManual = { step = PairStep.Address() },
         onConnect = {
             when (val parsed = MacAddress.parse(address.text)) {
-                MacAddress.Parsed.Empty -> step = PairStep.Address("Type your Mac's address first.")
+                MacAddress.Parsed.Empty -> step = PairStep.Address("Type your computer's address first.")
                 is MacAddress.Parsed.Invalid -> step = PairStep.Address(parsed.reason)
                 is MacAddress.Parsed.Ok -> pair(parsed.endpoint, MacAddress.label(parsed.endpoint), manual = true)
             }

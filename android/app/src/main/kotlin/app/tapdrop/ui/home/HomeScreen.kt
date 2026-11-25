@@ -255,7 +255,7 @@ fun HomeScreen(
     val unrecognised by app.transfers.unrecognised.collectAsStateWithLifecycle()
     val unknown = online == false && mac.id in unrecognised
     val (pillText, pillTone) = when {
-        online == null -> "Looking for your Mac" to StatusTone.Searching
+        online == null -> "Looking for your computer" to StatusTone.Searching
         unknown -> "Not paired anymore" to StatusTone.Offline
         online == false -> (if (wifi) "Not reachable" else "Not on Wi‑Fi") to StatusTone.Offline
         live -> "Ready to tap" to StatusTone.Live
@@ -348,7 +348,7 @@ fun HomeScreen(
                     modifier = Modifier.padding(top = 18.dp).entrance(2, enabled = intro),
                 )
             }
-            item("fromMac") {
+            item("fromcomputer") {
                 FromMacRow(
                     enabled = online != false,
                     onClick = { app.transfers.pullClipboard(mac) },
@@ -450,9 +450,9 @@ private fun Hero(
             )
         }
         val (plain, lit) = when {
-            online == null -> "Looking for your " to "Mac."
+            online == null -> "Looking for your " to "computer."
             unknown -> "Pair " to "again."
-            online == false -> "Your Mac is " to "away."
+            online == false -> "Your computer is " to "away."
             live -> "Ready to " to "tap."
             else -> "Connected, " to "ready."
         }
@@ -481,9 +481,9 @@ private fun Hero(
                     TState.Idle -> {
                         val line = when {
                             online == null -> "Connecting over your Wi‑Fi…"
-                            unknown -> "${mac.name} doesn't know this phone anymore. It was probably forgotten on the Mac."
-                            online == false && !wifi -> "Connect to the same Wi‑Fi as your Mac."
-                            online == false -> "Open TapDrop on your Mac and make sure you're both on the same Wi‑Fi."
+                            unknown -> "${mac.name} doesn't know this phone anymore. It was probably forgotten on the computer."
+                            online == false && !wifi -> "Connect to the same Wi‑Fi as your computer."
+                            online == false -> "Open TapDrop on your computer and make sure you're both on the same Wi‑Fi."
                             live -> TapCopy.PRIMARY
                             tapReady -> "Share from any app. Tap to send is connecting…"
                             else -> "Share from any app, or set up tap to send."
@@ -571,7 +571,7 @@ private fun FromMacRow(enabled: Boolean, onClick: () -> Unit, modifier: Modifier
     val c = Td.colors
     val shape = RoundedCornerShape(22.dp)
     Column(modifier) {
-        SectionHeader("From your Mac")
+        SectionHeader("From your computer")
         Row(
             Modifier
                 .fillMaxWidth()
@@ -586,8 +586,8 @@ private fun FromMacRow(enabled: Boolean, onClick: () -> Unit, modifier: Modifier
                 Icon(Icons.Outlined.Laptop, null, tint = if (enabled) c.text else c.textTertiary, modifier = Modifier.size(21.dp))
             }
             Column(Modifier.weight(1f).padding(start = 14.dp, end = 10.dp)) {
-                Text("Your Mac’s clipboard", style = TdType.subtitle, color = if (enabled) c.text else c.textTertiary)
-                Text("Bring what you copied on the Mac to this phone", style = TdType.bodySmall, color = c.textSecondary)
+                Text("Your computer’s clipboard", style = TdType.subtitle, color = if (enabled) c.text else c.textTertiary)
+                Text("Bring what you copied on the computer to this phone", style = TdType.bodySmall, color = c.textSecondary)
             }
             Icon(Icons.Rounded.SouthWest, null, tint = c.textSecondary, modifier = Modifier.size(18.dp))
         }

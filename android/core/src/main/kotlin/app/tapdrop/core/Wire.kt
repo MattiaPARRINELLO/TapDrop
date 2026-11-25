@@ -15,15 +15,15 @@ import javax.crypto.spec.SecretKeySpec
 
 open class TapDropException(message: String) : IOException(message)
 class ProtocolException(message: String) : TapDropException(message)
-class DecryptException : TapDropException("Could not decrypt — the Mac may have forgotten this phone")
-open class UnpairedException(message: String = "This phone isn't paired with that Mac anymore") : TapDropException(message)
+class DecryptException : TapDropException("Could not decrypt — the computer may have forgotten this phone")
+open class UnpairedException(message: String = "This phone isn't paired with that computer anymore") : TapDropException(message)
 /** The Mac said, encrypted with this pairing's key (so it really is that Mac), that it forgot this phone. */
-class ForgottenException : UnpairedException("The Mac forgot this phone")
+class ForgottenException : UnpairedException("The computer forgot this phone")
 class UnreachableException(val endpoint: Endpoint, cause: IOException) :
-    TapDropException("Can't reach your Mac at ${endpoint.host}") {
+    TapDropException("Can't reach your computer at ${endpoint.host}") {
     init { initCause(cause) }
 }
-class PairRejectedException : TapDropException("Pairing was declined on the Mac")
+class PairRejectedException : TapDropException("Pairing was declined on the computer")
 
 /** Length-prefixed frames over a TCP socket. */
 class FrameIO(private val socket: Socket) : Closeable {

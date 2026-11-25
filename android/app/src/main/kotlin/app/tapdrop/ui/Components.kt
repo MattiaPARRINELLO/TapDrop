@@ -259,7 +259,7 @@ fun bump(t: Float, rise: Float, hold: Float, fall: Float): Float = when {
     else -> 0f
 }
 
-/** A phone bumping a laptop: a compact "tap your phone on the Mac" hint. */
+/** A phone bumping a laptop: a compact "tap your phone on the computer" hint. */
 @Composable
 fun TapHint(modifier: Modifier = Modifier, tint: Color = Td.colors.accent) {
     val p = bump(loopPhase(2400), rise = 750 / 2400f, hold = 1250 / 2400f, fall = 2000 / 2400f)

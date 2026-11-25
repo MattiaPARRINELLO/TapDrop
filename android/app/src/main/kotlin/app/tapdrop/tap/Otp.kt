@@ -53,7 +53,7 @@ object OtpRelay {
                 record = false, haptics = false,
             )
             val ok = job.await() is app.tapdrop.net.TState.Done
-            withContext(Dispatchers.Main) { pill?.finish(ok, if (ok) "Code ${pretty(code)} on your Mac" else "Couldn't reach your Mac") }
+            withContext(Dispatchers.Main) { pill?.finish(ok, if (ok) "Code ${pretty(code)} on your computer" else "Couldn't reach your computer") }
         }
     }
 

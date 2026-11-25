@@ -147,7 +147,7 @@ fun PairContent(
                 navigation = onBack?.let { back -> { BackButton(back) } },
                 title = {
                     Text(
-                        "Pair with your Mac",
+                        "Pair with your computer",
                         style = TdType.subtitle,
                         color = Td.colors.text,
                         maxLines = 1,
@@ -211,14 +211,14 @@ fun PairContent(
                 DeviceHero(
                     state = hero,
                     contentDescription = when (hero) {
-                        LinkState.Offline -> "Your phone and Mac, not connected"
-                        LinkState.Searching -> "Looking for your Mac"
-                        else -> "Your phone and Mac"
+                        LinkState.Offline -> "Your phone and computer, not connected"
+                        LinkState.Searching -> "Looking for your computer"
+                        else -> "Your phone and computer"
                     },
                     modifier = Modifier.widthIn(max = 320.dp).entrance(0, enabled = intro),
                 )
                 Text(
-                    app.tapdrop.ui.design.litTitle("Pair with your Mac"),
+                    app.tapdrop.ui.design.litTitle("Pair with your computer"),
                     style = TdType.display,
                     color = Td.colors.text,
                     textAlign = TextAlign.Center,
@@ -229,15 +229,15 @@ fun PairContent(
                         .semantics { heading() },
                 )
                 Text(
-                    if (wifi) "Open TapDrop on your Mac. It shows up here when you're both on the same Wi‑Fi."
-                    else "TapDrop finds your Mac over Wi‑Fi. Join the same network as your Mac.",
+                    if (wifi) "Open TapDrop on your computer. It shows up here when you're both on the same Wi‑Fi."
+                    else "TapDrop finds your computer over Wi‑Fi. Join the same network as your computer.",
                     style = TdType.body.copy(lineBreak = LineBreak.Heading),
                     color = Td.colors.textSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.widthIn(max = 340.dp).padding(top = 10.dp).entrance(1, enabled = intro),
                 )
                 SectionHeader(
-                    "Nearby Macs",
+                    "Nearby computers",
                     Modifier.padding(top = 10.dp).entrance(2, enabled = intro),
                     action = if (wifi && nearby.isNotEmpty()) {
                         { StillLooking() }
@@ -253,12 +253,12 @@ fun PairContent(
                                 enter = fadeIn() + expandVertically(Td.motion.standard()),
                                 exit = fadeOut() + shrinkVertically(Td.motion.standard()),
                             ) {
-                                SettingsGroup(title = "Can't see your Mac?") {
-                                    row("Open TapDrop on your Mac", "It lives in the menu bar.", Icons.Rounded.LaptopMac, Brand.Bone)
-                                    row("Use the same Wi‑Fi", "Phone and Mac on one network.", Icons.Rounded.Wifi, Brand.Bone)
+                                SettingsGroup(title = "Can't see your computer?") {
+                                    row("Open TapDrop on your computer", "It lives in the menu bar.", Icons.Rounded.LaptopMac, Brand.Bone)
+                                    row("Use the same Wi‑Fi", "Phone and computer on one network.", Icons.Rounded.Wifi, Brand.Bone)
                                     row(
                                         "Enter its address",
-                                        "Shown on your Mac in Set Up a Phone.",
+                                        "Shown on your computer in Set Up a Phone.",
                                         Icons.Rounded.Keyboard, Brand.Bone,
                                         onClick = onManual,
                                         trailing = { RowChevron() },
@@ -376,7 +376,7 @@ private fun StillLooking() {
     Row(
         Modifier
             .heightIn(min = 24.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "Still looking for Macs" },
+            .semantics(mergeDescendants = true) { contentDescription = "Still looking for computers" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TdLoadingIndicator(Modifier.size(22.dp), color = Td.colors.textTertiary)
@@ -396,7 +396,7 @@ private fun SearchingCard(modifier: Modifier = Modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TdLoadingIndicator(Modifier.size(56.dp), contained = true)
             Column(Modifier.padding(start = 14.dp)) {
-                Text("Looking for Macs…", style = TdType.subtitle, color = Td.colors.text)
+                Text("Looking for computers…", style = TdType.subtitle, color = Td.colors.text)
                 Text(
                     "This usually takes a moment.",
                     style = TdType.bodySmall,
@@ -415,7 +415,7 @@ private fun NoWifiCard(onWifiSettings: () -> Unit, modifier: Modifier = Modifier
         EmptyState(
             icon = Icons.Rounded.WifiOff,
             title = "This phone isn't on Wi‑Fi",
-            body = "Join the same Wi‑Fi network as your Mac, and it will show up here.",
+            body = "Join the same Wi‑Fi network as your computer, and it will show up here.",
             accent = Td.colors.warning,
             shape = TdShapes.Cookie9,
             action = { SmallButton("Wi‑Fi settings", onWifiSettings, prominent = true) },

@@ -239,13 +239,13 @@ class Transfers(
     fun receiveInbox(mac: SavedMac): Job = run(mac, outgoing = false, title = "Receiving from ${mac.name}") { ep, progress ->
         val sink = MediaStoreSink(app)
         client.pullInbox(ep, mac.macKey, sink, progress)
-        finishReceive(mac, sink.items, "Nothing waiting on your Mac")
+        finishReceive(mac, sink.items, "Nothing waiting on your computer")
     }
 
-    fun pullClipboard(mac: SavedMac): Job = run(mac, outgoing = false, title = "Getting Mac clipboard") { ep, progress ->
+    fun pullClipboard(mac: SavedMac): Job = run(mac, outgoing = false, title = "Getting computer clipboard") { ep, progress ->
         val sink = MediaStoreSink(app)
         client.getClipboard(ep, mac.macKey, sink, progress)
-        finishReceive(mac, sink.items, "Mac clipboard is empty")
+        finishReceive(mac, sink.items, "computer clipboard is empty")
     }
 
     private suspend fun finishReceive(mac: SavedMac, items: List<Received>, emptyMessage: String): TState {
@@ -311,7 +311,7 @@ class Transfers(
         fun friendly(e: Throwable, macName: String): String = when (e) {
             is UnreachableException -> "Can't reach $macName. Make sure TapDrop is running and you're on the same Wi‑Fi."
             is UnpairedException, is DecryptException -> "$macName doesn't recognise this phone anymore. Pair again in TapDrop."
-            is PairRejectedException -> "Pairing was declined on the Mac."
+            is PairRejectedException -> "Pairing was declined on the computer."
             is SocketTimeoutException -> "The connection timed out."
             is FileNotFoundException -> "Couldn't open one of the files."
             is IOException -> e.message?.takeIf { it.isNotBlank() } ?: "The connection was interrupted."

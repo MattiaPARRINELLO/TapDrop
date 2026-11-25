@@ -43,7 +43,7 @@ enum class TapAction(val label: String, val detail: String) {
     ASK("Show options", "Choose what to share each time"),
     LATEST_PHOTO("Send latest photo", "Your newest photo or video goes instantly"),
     CLIPBOARD("Send clipboard", "Whatever you last copied goes instantly"),
-    MAC_CLIPBOARD("Get Mac clipboard", "Paste what you copied on the Mac"),
+    MAC_CLIPBOARD("Get computer clipboard", "Paste what you copied on the computer"),
 }
 
 data class HistoryEntry(
@@ -80,7 +80,7 @@ class Prefs(ctx: Context) {
     private val _macs = MutableStateFlow(loadMacs())
     val macs: StateFlow<List<SavedMac>> = _macs.asStateFlow()
 
-    private val _sticker = MutableStateFlow(sp.getString("stickerMac", null))
+    private val _sticker = MutableStateFlow(sp.getString("stickercomputer", null))
     val stickerMac: StateFlow<String?> = _sticker.asStateFlow()
 
     private val _tapAction = MutableStateFlow(
@@ -369,7 +369,7 @@ class Prefs(ctx: Context) {
 
     fun setSticker(macId: String?) {
         _sticker.value = macId
-        sp.edit { putString("stickerMac", macId) }
+        sp.edit { putString("stickercomputer", macId) }
     }
 
     fun setTapAction(a: TapAction) {

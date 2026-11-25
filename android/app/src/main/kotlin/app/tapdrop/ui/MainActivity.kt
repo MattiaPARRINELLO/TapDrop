@@ -266,7 +266,7 @@ private fun StickerSheet(mac: SavedMac, close: () -> Unit) {
             style = TdType.title, color = Td.colors.text,
         )
         Text(
-            if (phase is StickerPhase.Done) "Stick it on your Mac, next to the trackpad. Tap your phone on it any time to share."
+            if (phase is StickerPhase.Done) "Stick it on your computer, next to the trackpad. Tap your phone on it any time to share."
             else "Hold an NFC sticker against the back of your phone, just below the camera bar.",
             style = TdType.bodySmall,
             color = Td.colors.textSecondary,

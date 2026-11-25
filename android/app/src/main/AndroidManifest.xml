@@ -70,7 +70,7 @@
             android:name=".ui.ShareActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="Send to Mac"
+            android:label="Send to computer"
             android:launchMode="singleTask"
             android:taskAffinity="app.tapdrop.share"
             android:theme="@style/Theme.TapDrop.Sheet">

@@ -222,12 +222,12 @@ fun SettingsScreen(
         },
     ) {
         item("mac") {
-            SettingsGroup(title = if (macs.size > 1) "Your Macs" else "Your Mac") {
+            SettingsGroup(title = if (macs.size > 1) "Your computers" else "Your computer") {
                 macs.forEachIndexed { i, m ->
                     item { shape -> MacRow(m, live = live && i == 0, shape = shape) { macSheet = m.id } }
                 }
                 row(
-                    "Pair another Mac",
+                    "Pair another computer",
                     icon = Icons.Rounded.Add,
                     accent = c.textSecondary,
                     onClick = onPairAnother,
@@ -240,7 +240,7 @@ fun SettingsScreen(
             SettingsGroup(title = "This phone") {
                 row(
                     myName.name,
-                    subtitle = if (macs.size > 1) "What your Macs call this phone" else "What your Mac calls this phone",
+                    subtitle = if (macs.size > 1) "What your computers call this phone" else "What your computer calls this phone",
                     icon = Icons.Rounded.Smartphone,
                     accent = c.text,
                     onClick = { renamingMe = true },
@@ -456,13 +456,13 @@ fun SettingsScreen(
             SettingsGroup(title = "One-time codes") {
                 item { shape ->
                     SwitchRow(
-                        title = "Send codes to your Mac",
+                        title = "Send codes to your computer",
                         checked = otpOn,
                         onCheckedChange = { app.prefs.setSmartOtp(it) },
                         shape = shape,
                         subtitle = when {
                             !otpOn -> "Codes stay on your phone"
-                            perms.sms -> "From texts and notifications, onto your Mac's clipboard"
+                            perms.sms -> "From texts and notifications, onto your computer's clipboard"
                             else -> "From notifications · allow texts below for SMS codes"
                         },
                         icon = Icons.Rounded.Key,
@@ -541,7 +541,7 @@ fun SettingsScreen(
                     row(
                         "NFC sticker",
                         subtitle = macs.firstOrNull { it.id == sticker }?.let { "Linked to ${it.name} · tap to rewrite" }
-                            ?: "Stick one on your Mac, then tap it with your phone",
+                            ?: "Stick one on your computer, then tap it with your phone",
                         icon = Icons.Rounded.Nfc,
                         accent = Brand.Bone,
                         onClick = onSticker,
@@ -565,8 +565,8 @@ fun SettingsScreen(
             SettingsGroup(title = "Help") {
                 item { shape ->
                     SettingsRow(
-                        title = "Supported phones & Macs",
-                        subtitle = "Android 13+ · macOS 15+ · what each needs",
+                        title = "Supported phones & computers",
+                        subtitle = "Android 13+ · Linux · what each needs",
                         shape = shape,
                         leading = {
                             IconChip(
@@ -588,7 +588,7 @@ fun SettingsScreen(
                 )
                 row(
                     "Private by design",
-                    subtitle = "End-to-end encrypted. Stays on your Wi‑Fi, only to Macs you paired.",
+                    subtitle = "End-to-end encrypted. Stays on your Wi‑Fi, only to computers you paired.",
                     icon = Icons.Rounded.Shield,
                     accent = Brand.Bone,
                 )
@@ -601,8 +601,8 @@ fun SettingsScreen(
     if (renamingMe) {
         RenameDialog(
             title = "Rename this phone",
-            message = if (macs.size > 1) "Your Macs show this name. It changes there too."
-            else "Your Mac shows this name. It changes there too.",
+            message = if (macs.size > 1) "Your computers show this name. It changes there too."
+            else "Your computer shows this name. It changes there too.",
             current = myName.name,
             icon = Icons.Rounded.Smartphone,
             systemName = app.prefs.systemName,
@@ -617,8 +617,8 @@ fun SettingsScreen(
 
     macs.firstOrNull { it.id == renamingMac }?.let { m ->
         RenameDialog(
-            title = "Rename your Mac",
-            message = "This is the Mac's own name: it changes on the Mac, and on your other phones too.",
+            title = "Rename your computer",
+            message = "This is the computer's own name: it changes on the computer, and on your other phones too.",
             current = m.name,
             icon = Icons.Rounded.LaptopMac,
             onSave = { name ->
@@ -658,7 +658,7 @@ fun SettingsScreen(
             title = { Text("Turn off tap to send?", style = TdType.title, textAlign = TextAlign.Center) },
             text = {
                 Text(
-                    "Your phone stops listening for the notch. To turn it back on, you'll switch TapDrop on in Accessibility again.",
+                    "Your phone stops listening for the camera bar. To turn it back on, you'll switch TapDrop on in Accessibility again.",
                     style = TdType.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
                 )
             },
@@ -680,7 +680,7 @@ fun SettingsScreen(
 private fun testSubtitle(t: TapTrace?): String {
     val ago = t?.let { agoText(it.at) }
     return when {
-        t == null -> "See what your Mac's notch sees"
+        t == null -> "See what your computer's camera bar sees"
         t.ok -> "Last tap counted · $ago"
         t.why == "calibrating" -> "Calibrating · $ago"
         else -> "Last tap didn't count · $ago"
@@ -770,13 +770,13 @@ private fun MacSheet(
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (sure) {
                     Text(
-                        "To use it again, you'll pair with a new code from your Mac.",
+                        "To use it again, you'll pair with a new code from your computer.",
                         style = TdType.bodySmall, color = c.textSecondary, textAlign = TextAlign.Center,
                         modifier = Modifier.widthIn(max = 320.dp).padding(bottom = 12.dp),
                     )
                 }
                 DestructiveButton(
-                    if (sure) "Forget ${mac.name}" else "Forget this Mac",
+                    if (sure) "Forget ${mac.name}" else "Forget this computer",
                     {
                         if (sure) {
                             haptics.heavy()
@@ -944,7 +944,7 @@ private fun TapActionSheet(current: TapAction, close: () -> Unit) {
     var chosen by remember { mutableStateOf(current) }
     Text("When you tap the sticker", style = TdType.title, color = c.text, modifier = Modifier.padding(top = 4.dp))
     Text(
-        "Hold your phone to the NFC sticker on your Mac.",
+        "Hold your phone to the NFC sticker on your computer.",
         style = TdType.bodySmall, color = c.textSecondary, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp),
     )
     SettingsGroup {

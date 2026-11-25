@@ -48,12 +48,12 @@ import app.tapdrop.ui.design.tdSharedBounds
 fun CompatibilityScreen(onClose: () -> Unit) {
     LargeTitleScaffold(
         title = "Supported devices",
-        subtitle = "Which phones and Macs TapDrop works with",
+        subtitle = "Which phones and computers TapDrop works with",
         onBack = onClose,
     ) {
         item("phone") { ThisPhoneCard() }
         item("macs") {
-            SettingsGroup(title = "Macs", footer = Compatibility.macRequirement) {
+            SettingsGroup(title = "computers", footer = Compatibility.macRequirement) {
                 Compatibility.macs.forEach { m -> item { shape -> MacKindRow(m, shape) } }
             }
         }
@@ -106,10 +106,10 @@ private fun ThisPhoneCard() {
     val caps = remember {
         listOf(
             Cap("Android 13 or newer", "Required", DeviceSupport.supported, required = true),
-            Cap("Motion sensor", "Tells a real tap from a hand on the notch", DeviceSupport.hasMotionSensor(ctx), required = true),
+            Cap("Motion sensor", "Tells a real tap from a hand on the camera bar", DeviceSupport.hasMotionSensor(ctx), required = true),
             Cap("Proximity sensor", "Lets your phone start a tap too", DeviceSupport.hasProximity(ctx)),
             Cap("NFC", "For the optional sticker", DeviceSupport.hasNfc(ctx)),
-            Cap("On Wi‑Fi now", "Needed to reach your Mac", DeviceSupport.onWifi(ctx), required = true),
+            Cap("On Wi‑Fi now", "Needed to reach your computer", DeviceSupport.onWifi(ctx), required = true),
         )
     }
     GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 8.dp)) {

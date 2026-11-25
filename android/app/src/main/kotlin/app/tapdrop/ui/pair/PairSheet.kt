@@ -164,13 +164,13 @@ private fun CodeStep(step: PairStep, close: () -> Unit) {
         StepTitle(
             when (step) {
                 is PairStep.Connecting -> "Connecting to $macName"
-                is PairStep.Code -> "Check the code on your Mac"
+                is PairStep.Code -> "Check the code on your computer"
                 else -> "You're paired"
             }
         )
         StepBody(
             when (step) {
-                is PairStep.Connecting -> "Getting a code from your Mac."
+                is PairStep.Connecting -> "Getting a code from your computer."
                 is PairStep.Code -> "$macName should show the same code. Click Pair there to finish."
                 else -> "$macName and this phone can now share with a tap."
             }
@@ -180,7 +180,7 @@ private fun CodeStep(step: PairStep, close: () -> Unit) {
         Spacer(Modifier.height(22.dp))
         when (step) {
             is PairStep.Connecting -> StatusPill("Connecting", StatusTone.Searching)
-            is PairStep.Code -> StatusPill("Waiting for your Mac", StatusTone.Searching)
+            is PairStep.Code -> StatusPill("Waiting for your computer", StatusTone.Searching)
             else -> StatusPill("Paired", StatusTone.Good)
         }
         // Cancel folds away once paired; the sheet settles a little as the check lands.
@@ -206,24 +206,24 @@ private fun problemCopy(step: PairStep.Failed): ProblemCopy {
     return when (step.problem) {
         PairProblem.Declined -> ProblemCopy(
             Icons.Rounded.Block, c.danger, "Pairing declined",
-            "$mac said no. Try again, and click Pair on your Mac when the code shows up.",
+            "$mac said no. Try again, and click Pair on your computer when the code shows up.",
         )
         PairProblem.Expired -> ProblemCopy(
             Icons.Rounded.Timer, c.warning, "The code expired",
             "Nobody clicked Pair on $mac in time. Try again and confirm within two minutes.",
         )
         PairProblem.Unreachable -> ProblemCopy(
-            Icons.Rounded.WifiFind, c.warning, "Can't reach your Mac",
-            if (step.manual) "Nothing answered at $mac. Make sure TapDrop is open on your Mac, and that your phone and Mac are on the same Wi‑Fi."
-            else "$mac didn't answer. Make sure TapDrop is open on your Mac, and that your phone and Mac are on the same Wi‑Fi.",
+            Icons.Rounded.WifiFind, c.warning, "Can't reach your computer",
+            if (step.manual) "Nothing answered at $mac. Make sure TapDrop is open on your computer, and that your phone and computer are on the same Wi‑Fi."
+            else "$mac didn't answer. Make sure TapDrop is open on your computer, and that your phone and computer are on the same Wi‑Fi.",
         )
         PairProblem.Lost -> ProblemCopy(
             Icons.Rounded.LinkOff, c.danger, "Lost the connection",
-            "$mac stopped answering. Check that TapDrop is still open on your Mac, then try again.",
+            "$mac stopped answering. Check that TapDrop is still open on your computer, then try again.",
         )
         PairProblem.NotTapDrop -> ProblemCopy(
             Icons.Rounded.SearchOff, c.warning, "That isn't TapDrop",
-            "Something answered at $mac, but it isn't TapDrop. Check the address on your Mac.",
+            "Something answered at $mac, but it isn't TapDrop. Check the address on your computer.",
         )
         PairProblem.Other -> ProblemCopy(
             Icons.Rounded.ErrorOutline, c.danger, "Couldn't pair",
@@ -270,7 +270,7 @@ private fun AddressStep(
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         StepVisual { IconChip(Icons.Rounded.Lan, Td.colors.text, size = 72.dp, shape = TdShapes.Cookie9, iconSize = 32.dp) }
         StepTitle("Connect by address")
-        StepBody("Type the address TapDrop shows on your Mac, under Set Up a Phone.")
+        StepBody("Type the address TapDrop shows on your computer, under Set Up a Phone.")
         Spacer(Modifier.height(22.dp))
         AddressField(address, onAddressChange, error, onGo = { keyboard?.hide(); onConnect() })
         Spacer(Modifier.height(18.dp))
@@ -315,7 +315,7 @@ private fun AddressField(
                 .focusRequester(focus)
                 .onFocusChanged { focused = it.isFocused }
                 .semantics {
-                    contentDescription = "Mac address"
+                    contentDescription = "computer address"
                     if (error != null) error(error)
                 },
             decorationBox = { inner ->

@@ -3,12 +3,12 @@ package app.tapdrop.data
 /** What holding the phone to the Mac's notch sends, chosen per app. */
 enum class SendMode(val title: String, val detail: String) {
     SMART("Smart", "The page in browsers, the PDF, video or photo on screen, otherwise a screenshot"),
-    LINK("Page link", "Opens the same page on your Mac"),
+    LINK("Page link", "Opens the same page on your computer"),
     MEDIA("Photo or video on screen", "The original file when it's in your gallery, else a screenshot"),
     LATEST_MEDIA("Latest photo or video", "Your newest shot, full quality"),
     SCREENSHOT("Screenshot", "Exactly what's on screen"),
-    TEXT("Text on screen", "Copies the visible text to your Mac"),
-    OFF("Off", "Holding to the notch does nothing here"),
+    TEXT("Text on screen", "Copies the visible text to your computer"),
+    OFF("Off", "Holding to the camera bar does nothing here"),
 }
 
 object AppRules {

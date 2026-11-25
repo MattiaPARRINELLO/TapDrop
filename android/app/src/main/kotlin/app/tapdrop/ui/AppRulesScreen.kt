@@ -182,7 +182,7 @@ fun AppRulesScreen(onClose: () -> Unit) {
 
     LargeTitleScaffold(
         title = "What each app sends",
-        subtitle = "When you touch your phone to the notch",
+        subtitle = "When you touch your phone to the camera bar",
         onBack = onClose,
         state = list,
         chrome = {
@@ -399,7 +399,7 @@ private fun ModeSheet(a: AppEntry, current: SendMode, close: () -> Unit) {
         AppIcon(a.pkg, 52.dp)
         Column(Modifier.padding(start = 14.dp)) {
             Text(a.label, style = TdType.title, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("When you touch your phone to the notch", style = TdType.bodySmall, color = c.textSecondary)
+            Text("When you touch your phone to the camera bar", style = TdType.bodySmall, color = c.textSecondary)
         }
     }
     Column(Modifier.heightIn(max = maxList).verticalScroll(rememberScrollState())) {
@@ -446,10 +446,10 @@ private fun ModeSheet(a: AppEntry, current: SendMode, close: () -> Unit) {
 /** What a mode sends in this app, in a line. Smart says what it picks here (see [AppRules.smart]). */
 private fun SendMode.blurb(pkg: String): String = when (this) {
     SendMode.SMART -> when (AppRules.smart(pkg)) {
-        SendMode.LINK -> "Here: the page itself, so it opens on your Mac"
+        SendMode.LINK -> "Here: the page itself, so it opens on your computer"
         SendMode.LATEST_MEDIA -> "Here: your newest photo or video, full quality"
         else -> "Here: the photo, video or file on screen, or else a screenshot"
     }
-    SendMode.OFF -> "Touching your phone to the notch does nothing here"
+    SendMode.OFF -> "Touching your phone to the camera bar does nothing here"
     else -> detail
 }

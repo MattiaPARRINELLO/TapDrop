@@ -11,8 +11,8 @@ import java.net.URL
  * the app's name and version, nothing about the phone or the person.
  */
 object ReleaseFeed {
-    const val LATEST = "https://api.github.com/repos/0x1p0/TapDrop/releases/latest"
-    const val RELEASES_PAGE = "https://github.com/0x1p0/TapDrop/releases/latest"
+    const val LATEST = "https://api.github.com/repos/MattiaPARRINELLO/TapDrop/releases/latest"
+    const val RELEASES_PAGE = "https://github.com/MattiaPARRINELLO/TapDrop/releases/latest"
 
     /** What a check found. */
     sealed interface Result {

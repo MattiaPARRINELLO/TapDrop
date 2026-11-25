@@ -67,19 +67,19 @@ fun WelcomeScreen(onPair: () -> Unit) {
             Spacer(Modifier.height(28.dp))
             DeviceHero(
                 state = LinkState.Live,
-                contentDescription = "A MacBook and a phone, linked by light",
+                contentDescription = "A computer and a phone, linked by light",
                 modifier = Modifier.widthIn(max = 380.dp).entrance(0),
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                app.tapdrop.ui.design.litTitle("Your phone, one tap from your Mac"),
+                app.tapdrop.ui.design.litTitle("Your phone, one tap from your computer"),
                 style = TdType.display,
                 color = c.text,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.widthIn(max = 360.dp).entrance(1).semantics { heading() },
             )
             Text(
-                "Touch your phone's screen to the notch and whatever's on it lands on your Mac.",
+                "Touch your phone's screen to the camera bar and whatever's on it lands on your computer.",
                 style = TdType.body.copy(lineBreak = LineBreak.Heading),
                 color = c.textSecondary,
                 textAlign = TextAlign.Center,
@@ -97,12 +97,12 @@ fun WelcomeScreen(onPair: () -> Unit) {
             Spacer(Modifier.height(32.dp))
             forgottenBy?.let { ForgottenNote(it, Modifier.widthIn(max = 400.dp).fillMaxWidth().padding(bottom = 16.dp)) }
             PrimaryButton(
-                if (forgottenBy != null) "Pair again" else "Pair with your Mac",
+                if (forgottenBy != null) "Pair again" else "Pair with your computer",
                 onPair,
                 Modifier.widthIn(max = 400.dp).fillMaxWidth().entrance(4),
             )
             Text(
-                "You'll need TapDrop on your Mac (macOS 15 or later).",
+                "You'll need TapDrop on your computer (Linux).",
                 style = TdType.caption,
                 color = c.textTertiary,
                 textAlign = TextAlign.Center,
@@ -124,7 +124,7 @@ private fun ForgottenNote(macName: String, modifier: Modifier = Modifier) {
     ) {
         Text("$macName forgot this phone", style = TdType.label, color = c.text)
         Text(
-            "It was removed on the Mac, so it's gone from here too. Pair again to keep sending.",
+            "It was removed on the computer, so it's gone from here too. Pair again to keep sending.",
             style = TdType.bodySmall,
             color = c.textSecondary,
             modifier = Modifier.padding(top = 4.dp),

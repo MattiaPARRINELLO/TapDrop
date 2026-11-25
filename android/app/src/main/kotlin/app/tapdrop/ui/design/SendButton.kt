@@ -81,7 +81,7 @@ sealed interface SendButtonState {
     /** Finished well: the pill turns green and a check draws itself. */
     data class Done(val label: String) : SendButtonState
 
-    /** Finished with nothing to report ("Nothing waiting on your Mac"): a quiet neutral pill. */
+    /** Finished with nothing to report ("Nothing waiting on your computer"): a quiet neutral pill. */
     data class Notice(val label: String) : SendButtonState
 
     /** Failed: a calm red pill; tapping it runs [SendButton]'s onClick again. */

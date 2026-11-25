@@ -27,7 +27,7 @@ data class SharedFile(val uri: Uri?, val name: String, val mime: String, val siz
     val isVisual get() = isImage || isVideo
 }
 
-/** Everything another app handed to "Send to Mac", ready to preview. */
+/** Everything another app handed to "Send to computer", ready to preview. */
 @Immutable
 data class ShareContent(
     val files: List<SharedFile> = emptyList(),

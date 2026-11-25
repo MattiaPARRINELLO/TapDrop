@@ -390,9 +390,9 @@ class SendOverlay(private val svc: AccessibilityService) {
                 if (!current) return@whenFlown
                 val next = when (kind) {
                     PillKind.CODE -> content.copy(
-                        subtitle = if (ok) "Copied to your Mac" else text,
+                        subtitle = if (ok) "Copied to your computer" else text,
                         trail = if (ok) Trail.Done else Trail.Failed,
-                        spoken = if (ok) "Copied to your Mac" else text,
+                        spoken = if (ok) "Copied to your computer" else text,
                     )
                     else -> if (ok) {
                         content.copy(

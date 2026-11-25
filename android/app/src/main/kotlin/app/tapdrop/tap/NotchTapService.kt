@@ -627,7 +627,7 @@ class NotchTapService : AccessibilityService() {
         val id = m.optInt("id", -1)
         // A Mac whose light key is older than this phone's (or that asks without one) never gets a send.
         if (!LightKeyRules.grabCurrent(m)) {
-            Log.i("TapDrop", "grab $id without the current light key: TapDrop on the Mac needs the update")
+            Log.i("TapDrop", "grab $id without the current light key: TapDrop on the computer needs the update")
             ack(s, id, false, "none", "update-mac")
             trace(null, false, why = "update-mac")
             return
@@ -1008,15 +1008,15 @@ class NotchTapService : AccessibilityService() {
         when (plan) {
             is Plan.Link -> {
                 val host = Uri.parse(plan.url).host?.removePrefix("www.") ?: plan.url
-                val pill = overlay.flyChip(SendOverlay.Chip.LINK, host, "Opening on your Mac")
+                val pill = overlay.flyChip(SendOverlay.Chip.LINK, host, "Opening on your computer")
                 removeFrozen()
-                finish(pill, send(mac, listOf(OutItem.Text(plan.url)), host, mime = "text/x-link"), "Opened on your Mac")
+                finish(pill, send(mac, listOf(OutItem.Text(plan.url)), host, mime = "text/x-link"), "Opened on your computer")
             }
             is Plan.Text -> {
                 val words = plan.text.split(Regex("\\s+")).size
-                val pill = overlay.flyChip(SendOverlay.Chip.TEXT, "$words words", "Copying text to your Mac")
+                val pill = overlay.flyChip(SendOverlay.Chip.TEXT, "$words words", "Copying text to your computer")
                 removeFrozen()
-                finish(pill, send(mac, listOf(OutItem.Text(plan.text, clip = true)), "Text · $appName"), "Text copied on your Mac")
+                finish(pill, send(mac, listOf(OutItem.Text(plan.text, clip = true)), "Text · $appName"), "Text copied on your computer")
             }
             is Plan.Media -> {
                 val what2 = if (plan.media.isVideo) "video" else "photo"
@@ -1055,7 +1055,7 @@ class NotchTapService : AccessibilityService() {
     private fun showPlan(f: PickOverlay, plan: Plan) {
         when (plan) {
             is Plan.Link -> f.preview(PickOverlay.Plan(PickOverlay.Kind.LINK, Uri.parse(plan.url).host?.removePrefix("www.") ?: "Web page"))
-            is Plan.Text -> f.preview(PickOverlay.Plan(PickOverlay.Kind.TEXT, "${plan.text.split(Regex("\\s+")).size} words, to your Mac's clipboard"))
+            is Plan.Text -> f.preview(PickOverlay.Plan(PickOverlay.Kind.TEXT, "${plan.text.split(Regex("\\s+")).size} words, to your computer's clipboard"))
             is Plan.File -> f.preview(PickOverlay.Plan(PickOverlay.Kind.FILE, "${plan.file.name} · ${fmtSize(plan.file.size)}"))
             is Plan.Media -> {
                 val t = matcher.thumbnail(plan.media, 160)
@@ -1141,12 +1141,12 @@ class NotchTapService : AccessibilityService() {
         val crop = Bitmap.createBitmap(shot, r.left, r.top, r.width(), r.height())
         if (text != null) {
             val words = text.split(Regex("\\s+")).size
-            val pill = overlay.flyRegion(crop, r, if (words == 1) "Copying to your Mac" else "Copying $words words to your Mac", text)
+            val pill = overlay.flyRegion(crop, r, if (words == 1) "Copying to your computer" else "Copying $words words to your computer", text)
             then()
-            finish(pill, send(mac, listOf(OutItem.Text(text, clip = true)), "Text · $appName"), "Copied on your Mac")
+            finish(pill, send(mac, listOf(OutItem.Text(text, clip = true)), "Text · $appName"), "Copied on your computer")
             return
         }
-        val pill = overlay.flyRegion(crop, r, if (ocr) "Reading it on your Mac" else "Sending to your Mac")
+        val pill = overlay.flyRegion(crop, r, if (ocr) "Reading it on your computer" else "Sending to your computer")
         then()
         val png = withContext(Dispatchers.Default) {
             ByteArrayOutputStream().also { crop.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
@@ -1156,7 +1156,7 @@ class NotchTapService : AccessibilityService() {
         finish(
             pill,
             send(mac, listOf(item), if (ocr) "Text · $appName" else "Clip · $appName", previewOf(crop), "image/png"),
-            if (ocr) "Done — on your Mac" else "Sent to your Mac",
+            if (ocr) "Done — on your computer" else "Sent to your computer",
         )
     }
 

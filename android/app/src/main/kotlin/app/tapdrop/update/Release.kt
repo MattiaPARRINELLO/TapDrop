@@ -68,7 +68,7 @@ data class Release(
                 version = version,
                 tag = tag,
                 title = o.optString("name").ifBlank { "TapDrop $version" },
-                pageUrl = o.optString("html_url").ifBlank { "https://github.com/0x1p0/TapDrop/releases/tag/$tag" },
+                pageUrl = o.optString("html_url").ifBlank { "https://github.com/MattiaPARRINELLO/TapDrop/releases/tag/$tag" },
                 notes = o.optString("body").replace("\r\n", "\n"),
                 apk = all.firstOrNull { it.name == apkName(version) } ?: all.firstOrNull { it.name.endsWith("-android.apk") },
                 sums = all.firstOrNull { it.name == SUMS_NAME },

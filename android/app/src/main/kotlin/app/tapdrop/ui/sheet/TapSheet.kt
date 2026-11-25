@@ -95,7 +95,7 @@ sealed interface TapTransfer {
     /** Something arrived from the Mac ([title] "Received 3 photos", [subtitle] "Saved to Photos"). */
     data class Got(val title: String, val subtitle: String, val items: List<Received>) : TapTransfer
 
-    /** Finished with nothing to show ("Nothing waiting on your Mac"). */
+    /** Finished with nothing to show ("Nothing waiting on your computer"). */
     data class Nothing(val message: String) : TapTransfer
 
     data class Failed(val message: String) : TapTransfer
@@ -172,7 +172,7 @@ fun TapSheetBody(
             }
         }
         Spacer(Modifier.height(22.dp))
-        SheetLabel("Share with your Mac")
+        SheetLabel("Share with your computer")
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (mediaAllowed) {
@@ -211,8 +211,8 @@ fun TapSheetBody(
                 onClick = onSendClipboard,
             )
             ActionRow(
-                title = "Get Mac clipboard",
-                subtitle = "Paste what you copied on your Mac",
+                title = "Get computer clipboard",
+                subtitle = "Paste what you copied on your computer",
                 shape = segmentShape(2, 3),
                 enabled = canAct,
                 incoming = true,
@@ -228,7 +228,7 @@ fun TapSheetBody(
     }
 }
 
-/** Marker for the transfer area's "can't reach your Mac" note. */
+/** Marker for the transfer area's "can't reach your computer" note. */
 private data object Offline : TapTransfer
 
 /** A transfer's progress, result or retry, in the same pill the share sheet's Send turns into. */
@@ -276,7 +276,7 @@ private fun OfflineNote(macName: String, onReconnect: () -> Unit, modifier: Modi
         IconChip(Icons.Rounded.WifiFind, c.warning, size = 40.dp, shape = TdShapes.Cookie9, iconSize = 20.dp)
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(
-                "Can't reach your Mac",
+                "Can't reach your computer",
                 style = TdType.body.copy(fontWeight = FontWeight.SemiBold),
                 color = c.text,
                 modifier = Modifier.padding(top = 1.dp),
@@ -410,7 +410,7 @@ private fun ActionRow(
     }
 }
 
-/** A small tonal circle with an arrow: up for "to your Mac", down for "from your Mac". */
+/** A small tonal circle with an arrow: up for "to your computer", down for "from your computer". */
 @Composable
 private fun DirectionChip(incoming: Boolean, modifier: Modifier = Modifier) {
     val c = Td.colors
@@ -471,7 +471,7 @@ private fun NoMacSheet(onOpenApp: () -> Unit) {
     Column(Modifier.sheetBacking().fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         MacGlyph(width = 96.dp, lit = false, dim = true)
         Text(
-            "Pair your Mac first",
+            "Pair your computer first",
             style = TdType.title.copy(lineBreak = LineBreak.Heading),
             color = c.text,
             textAlign = TextAlign.Center,

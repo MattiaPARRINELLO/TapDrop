@@ -137,7 +137,7 @@ fun DeviceHero(
             LinkState.Failed -> 0.25f
             LinkState.Offline -> 0f
         },
-        TdMotion.gentle(), label = "notchGlow",
+        TdMotion.gentle(), label = "camera barGlow",
     )
     val dim by animateFloatAsState(if (state == LinkState.Offline) 1f else 0f, TdMotion.gentle(), label = "dim")
     val island by animateFloatAsState(if (state == LinkState.Sent) 1f else 0f, TdMotion.emphasized(), label = "island")
@@ -529,7 +529,7 @@ fun HowToTapIllustration(
     modifier: Modifier = Modifier,
     loops: Int = 2,
     startAtRest: Boolean = false,
-    contentDescription: String = "The top of the phone's screen against the notch, its light spilling around it",
+    contentDescription: String = "The top of the phone's screen against the camera bar, its light spilling around it",
 ) {
     val c = Td.colors
     val pal = macPalette()

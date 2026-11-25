@@ -87,18 +87,18 @@ import app.tapdrop.update.rememberNotificationAsk
  * gesture, the top of the screen against the notch, held until the phone buzzes.
  */
 object TapCopy {
-    const val PRIMARY = "Touch the top of your phone's screen to the notch."
+    const val PRIMARY = "Touch the top of your phone's screen to the camera bar."
     const val HOLD = "Hold it there until your phone buzzes."
-    const val SAFE = "TapDrop only sends when your Mac's notch sees your phone's screen light up and go dark right against it. " +
+    const val SAFE = "TapDrop only sends when your computer's camera bar sees your phone's screen light up and go dark right against it. " +
         "A hand, a lamp or a tap anywhere else can't send."
-    const val PRIVATE = "Stays on your Wi‑Fi, end‑to‑end encrypted, only to your Mac."
+    const val PRIVATE = "Stays on your Wi‑Fi, end‑to‑end encrypted, only to your computer."
 
     /** The Mac didn't see the screen's light (not-seen, no-light-sent). */
-    const val NOT_SEEN = "Your Mac didn't see your screen. Press the top of the screen flat on the notch."
+    const val NOT_SEEN = "Your computer didn't see your screen. Press the top of the screen flat on the camera bar."
     /** The light came, but the notch didn't go dark with the phone (stayed-lit, no-key-off). */
-    const val KEEP_ON = "Keep your phone on the notch until it buzzes."
+    const val KEEP_ON = "Keep your phone on the camera bar until it buzzes."
     /** The phone's back was to the notch (facing, screen-only). */
-    const val TURN_AROUND = "Turn your phone around: its screen goes against the notch."
+    const val TURN_AROUND = "Turn your phone around: its screen goes against the camera bar."
     /** Anything else that didn't count (other-phone, late, gone, busy, cooldown…). */
     const val TRY_AGAIN = "That tap didn't count. Try again."
 }
@@ -244,7 +244,7 @@ fun TapSetupScreen(onClose: () -> Unit, onTest: () -> Unit = {}) {
         if (s.ready) item("test") {
             SettingsRow(
                 title = "Test your tap",
-                subtitle = "See what your Mac's notch sees",
+                subtitle = "See what your computer's camera bar sees",
                 modifier = Modifier.padding(top = 12.dp),
                 leading = {
                     IconChip(
@@ -397,7 +397,7 @@ private fun AllSetCard(modifier: Modifier = Modifier) {
             Column(Modifier.padding(start = 4.dp)) {
                 Text("You're all set", style = TdType.subtitle, color = Td.colors.text)
                 Text(
-                    "Open anything, then touch the top of your phone's screen to the notch and hold it until it buzzes.",
+                    "Open anything, then touch the top of your phone's screen to the camera bar and hold it until it buzzes.",
                     style = TdType.bodySmall, color = Td.colors.textSecondary,
                 )
             }
@@ -422,9 +422,9 @@ fun TapSetupCard(onSetup: () -> Unit, modifier: Modifier = Modifier) {
             HowToTapIllustration(loops = 1)
         }
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)) {
-            Text("Tap your Mac to send", style = TdType.title, color = Td.colors.text)
+            Text("Tap your computer to send", style = TdType.title, color = Td.colors.text)
             Text(
-                "${TapCopy.PRIMARY} ${TapCopy.HOLD} Whatever's on screen lands on your Mac.",
+                "${TapCopy.PRIMARY} ${TapCopy.HOLD} Whatever's on screen lands on your computer.",
                 style = TdType.bodySmall,
                 color = Td.colors.textSecondary,
                 modifier = Modifier.padding(top = 6.dp),
@@ -561,7 +561,7 @@ fun ExtrasChecklist(modifier: Modifier = Modifier) {
                 item { shape ->
                     ExtraRow(
                         Icons.Rounded.Sms, Brand.Warning, "Codes from texts",
-                        if (e.sms) "One-time codes land on your Mac's clipboard" else "So codes in text messages go to your Mac",
+                        if (e.sms) "One-time codes land on your computer's clipboard" else "So codes in text messages go to your computer",
                         e.sms, "Allow", shape,
                     ) { askSms.launch(Manifest.permission.RECEIVE_SMS) }
                 }
