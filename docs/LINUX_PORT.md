@@ -1,180 +1,178 @@
-# Comment TapDrop a été porté sur Linux
+# How TapDrop was ported to Linux
 
-Ce document raconte ce qui a été fait, mesuré et décidé pour faire tourner la moitié « ordinateur » de
-TapDrop sur un PC Linux, avec l'application Android d'origine. Il sert de journal technique : les
-chiffres viennent de mesures réelles sur la machine, pas d'estimations.
+This document records what was done, measured and decided to make the "computer" half of TapDrop run
+on a Linux PC with the stock Android app. It is a technical journal: the numbers come from real
+measurements on the machine, not estimates.
 
-## 1. Le point de départ
+## 1. Starting point
 
-TapDrop est publié sous MIT, avec un protocole documenté dans `PROTOCOL.md` : appairage P-256 avec code
-à six chiffres, sessions chiffrées AES-256-GCM, lots de fichiers et de textes, lien live, et une preuve
-de contact physique appelée *light key*. L'application Mac est en Swift, l'application Android en
-Kotlin. Rien dans le protocole n'est spécifique à macOS : un hôte Linux peut donc se faire passer pour
-le Mac, sans toucher à l'application du téléphone.
+TapDrop is MIT-licensed, with a protocol documented in `PROTOCOL.md`: P-256 pairing with a six-digit
+code, AES-256-GCM sessions, batches of files and text, a live link, and a proof of physical contact
+called the *light key*. The Mac app is Swift, the Android app Kotlin. Nothing in the protocol is
+macOS-specific, so a Linux host can stand in for the Mac without touching the phone.
 
-L'hôte Linux a été écrit en Rust, dans `linux/` : un seul binaire, un service utilisateur, une icône de
-barre d'état, une fenêtre GTK, et une pastille animée.
+The Linux host is written in Rust, in `linux/`: a workspace with `tapdrop-protocol` (the protocol,
+UI-free and hardware-free) and `tapdrop-host` (a binary with the sensors, the island, a status bar
+icon and a GTK window).
 
-## 2. La machine et ses capteurs
+## 2. The machine and its sensors
 
-Machine : Lenovo Yoga 7 2-in-1 16ILL10, Garuda Linux, KDE Wayland, écran 120 Hz, facteur d'échelle 1,65.
+Machine: Lenovo Yoga 7 2-in-1 16ILL10, Garuda Linux, KDE Wayland, 120 Hz display, scale factor 1.65.
 
-Le module caméra (Luxvisions, USB) contient un hub de capteurs HID qui expose trois appareils IIO :
+The camera module (Luxvisions, USB) contains a HID sensor hub exposing three IIO devices:
 
-| Capteur | Chemin | Ce qu'il donne |
+| Sensor | Path | What it gives |
 |---|---|---|
-| lumière ambiante | `iio:device0` (`als`) | lux, échelle 0,1 |
-| proximité | `iio:device1` | un bit proche/loin, qui n'a pas réagi au téléphone |
-| distance | `iio:device2` | millimètres, 20 Hz |
+| ambient light | `iio:device0` (`als`) | lux, scale 0.1 |
+| proximity | `iio:device1` | one near/far bit, which did not react to a phone |
+| distance | `iio:device2` | millimetres, 20 Hz |
 
-### Mesures de lumière
+### Light measurements
 
-| Situation | Capteur de lumière | Webcam (moyenne 0-255) |
+| Situation | Ambient light sensor | Webcam (mean 0-255) |
 |---|---|---|
-| pièce éclairée | ~400 lux | 48 |
-| écran blanc du téléphone collé | 1 057 lux | 173 |
-| écran noir collé | 15 à 44 lux | 2,5 |
+| lit room | ~400 lux | 48 |
+| phone's white screen against it | 1 057 lux | 173 |
+| black screen against it | 15 to 44 lux | 2.5 |
 
-Le contraste est excellent dans les deux cas. Mais le capteur de lumière **ne rapporte qu'une mesure par
-seconde** : les changements de valeur sont espacés de 1 009 à 1 015 ms, et les paliers durent des
-multiples de 1 s. Forcer `sampling_frequency` à 100 Hz est accepté par le pilote mais le hub ignore la
-demande. La caméra, elle, lit **30 images par seconde**, et la bascule se voit en une image.
+Contrast is excellent in both cases. But the ambient light sensor **only reports once a second**:
+value changes are 1 009 to 1 015 ms apart, and plateaus last multiples of 1 s. Forcing
+`sampling_frequency` to 100 Hz is accepted by the driver but the hub ignores it. The camera reads
+**thirty frames a second**, and a switch shows in a single frame.
 
-### Mesures de proximité
+### Proximity measurements
 
-Poser le téléphone fait passer la distance à `10000` (aucun retour) et le canal binaire de 1 à 0, en
-40 à 100 ms. Une main produit exactement la même chose : la proximité ne peut donc **pas** prouver que
-c'est un écran, seulement ouvrir la question.
+Putting the phone down pushes the distance to `10000` (no return) and the binary channel from 1 to 0,
+within 40 to 100 ms. A hand does exactly the same: proximity therefore **cannot** prove it is a screen,
+it can only open the question.
 
-## 3. Le protocole
+## 3. The protocol
 
-Réimplémenté à l'identique : trames `u32` big-endian, JSON avant le chiffrement, `AES-256-GCM` avec
-nonce `direction || compteur`, P-256 ECDH, HKDF-SHA256, code d'appairage `u32 % 1e6`.
+Reimplemented to the letter: `u32` big-endian frames, JSON before encryption, `AES-256-GCM` with a
+`direction || counter` nonce, P-256 ECDH, HKDF-SHA256, and the pairing code as `u32 % 1e6`.
 
-Points vérifiés par les tests : HKDF conforme au vecteur RFC 5869, mêmes secrets des deux côtés, nonce
-dépendant des deux nonces, rejeu refusé (le test rejoue une trame scellée et attend l'échec), aller et
-retour d'un canal chiffré sur un duplex.
+The tests prove: HKDF matches RFC 5869 test vector 1, both sides derive the same secret, the session
+key depends on both nonces, a replay is refused (the test seals a frame once and feeds it twice), and a
+secure channel round-trips over a duplex.
 
-Côté fonctionnel : appairage, sessions `ping`, `send`, `getclip`, `inbox`, `watch`, `names`, `unpair`,
-et le message chiffré `forgotten` pour un téléphone oublié.
+On the functional side: pairing, the `ping`, `send`, `getclip`, `inbox`, `watch`, `names`, `unpair`
+requests, and the encrypted `forgotten` message for a phone that was forgotten.
 
-## 4. Le tap
+## 4. The tap
 
-Le protocole prévoit une « light key » : le téléphone éclaire son écran en blanc, puis en noir, et
-l'hôte doit voir la lumière puis l'obscurité. La version Mac utilise le capteur du notch, qui échantillonne
-vite. Sur ce PC, à une mesure par seconde, les fenêtres de 450 ms du protocole sont impossibles.
+The protocol expects a "light key": the phone lights its screen white, then black, and the host must
+see the light and then the darkness. The Mac version uses the notch sensor, which samples fast. On
+this PC, at one reading a second, the protocol's 450 ms windows are impossible.
 
-Décision : **la proximité déclenche, la lumière prouve**.
+Decision: **proximity triggers, light proves**.
 
-1. la proximité voit le contact, le round part en quelques dizaines de ms ;
-2. la caméra guette l'écran blanc, le seuil vaut 45 % de la luminosité de contact apprise ;
-3. l'écran noir doit faire chuter la mesure, et la bosse doit être plus sombre que la pièce.
+1. proximity sees the contact, the round starts within tens of milliseconds;
+2. the camera looks for the white screen, against 45 % of the learned contact brightness;
+3. the black screen must make the reading fall, and the bar must be darker than the room.
 
-Un round complet prend 240 à 280 ms, et le seuil s'apprend par la médiane des douze derniers taps
-réussis (1 042 lux mesurés ici, au lieu des 300 par défaut).
+A full round takes 240 to 280 ms, and the threshold learns from the median of the last twelve
+successful taps (1 042 lux measured here, instead of the 300 default).
 
-## 5. La caméra comme capteur
+## 5. The camera as a light sensor
 
-L'ambiant light sensor à 1 Hz ratait les éclairs. La webcam, dans la même bosse, lit 30 images par
-seconde : elle a remplacé le capteur pour le tap, avec trois précautions.
+The 1 Hz ambient sensor kept missing the flashes. The webcam, in the same bump, reads thirty frames a
+second: it replaced the sensor for the tap, with three precautions.
 
-- **exposition fixe** (`auto_exposure=1`, temps 80) : l'exposition automatique ramènerait un écran blanc
-  à un gris moyen, ce qui détruit la mesure ;
-- **exposition restaurée** après chaque round, pour ne pas casser les visioconférences ;
-- **la caméra ne s'ouvre que pendant un round** : la LED visible est le coût, environ un quart de seconde.
+- **fixed exposure** (`auto_exposure=1`, time 80): auto-exposure would pull a white screen back to
+  mid-grey, which destroys the measurement;
+- **exposure restored** after each round, so video calls keep working;
+- **the camera only opens during a round**: the visible LED is the cost, about a quarter of a second.
 
-La moyenne de luminance est ramenée dans les mêmes unités que le capteur de lumière (`×8`), ce qui
-permet de réutiliser tel quel l'apprentissage du seuil et la vérification de l'écho sombre.
+The mean luminance is mapped into the same units as the light sensor (`×8`), which lets the threshold
+learning and the dark echo check work unchanged.
 
-La caméra infrarouge a été écartée : un écran n'émet pas d'infrarouge, elle ne verrait que son propre
-illuminateur, donc elle se comporte comme la proximité.
+The infrared camera was ruled out: a screen emits no infrared, so it would only see its own
+illuminator, which makes it behave like proximity.
 
-## 6. L'îlot
+## 6. The island
 
-L'îlot est une surface Wayland de type layer (`gtk4-layer-shell`), ancrée en haut et centrée,
-transparente aux clics sauf sur la pastille. Il dessine avec Cairo et anime avec de vrais ressorts
-intégrés image par image, pilotés par le frame clock (120 Hz sur cette machine).
+The island is a Wayland layer surface (`gtk4-layer-shell`), anchored at the top and centred,
+click-through except on the pill. It draws with Cairo and animates with real springs stepped on the
+frame clock (120 Hz on this machine).
 
-L'îlot suit maintenant `docs/DESIGN.md` du projet plutôt que d'improviser :
+It follows the project's `docs/DESIGN.md` rather than improvising:
 
-- palette du système : nuit `#08080A` opaque, texte bone `#F4F3EF`, secondaire `#A2A2A8`, halo `#D6DEFF`,
-  aucune teinte d'accent, succès en bone et non en vert ;
-- Geist et Geist Mono, embarquées dans le binaire et enregistrées dans le processus via fontconfig, sans
-  toucher au dossier de fontes de la personne ;
-- géométrie d'encoche : haut plat contre le bord de l'écran, bas arrondi, 190 x 32 au repos ;
-- anatomie de leur îlot : visuel de tête (anneau de progression), titre 15 semibold, détail 12, pourcentage
-  en mono à droite ;
-- anneau de progression avec piste à 15 %, arc bone, point lumineux à la tête, quart de tour indéterminé
-  quand la taille totale est inconnue ;
-- succès : disque bone, coche encre qui se trace, ou la vignette du fichier reçu quand c'en est une
-  image, décodée hors du fil d'affichage ;
-- deux boutons discrets dans le résultat : ouvrir le fichier, ou son dossier ; le résultat reste huit
-  secondes, et le compte à rebours s'arrête tant que la souris est dessus ;
-- ressorts du système : îlot 0,42 s / 0,78, contenu 0,38 s / 0,86, vérifiés à 120 images par seconde ;
-- respect de « réduire les animations » quand GTK le signale ;
-- mises en page Pango en cache, pour ne rien recalculer à 120 images par seconde.
+- system palette: opaque night `#08080A`, bone text `#F4F3EF`, secondary `#A2A2A8`, the light glow
+  `#D6DEFF`, no accent hue, success in bone rather than green;
+- Geist and Geist Mono, embedded in the binary and registered with the process through fontconfig,
+  without touching the person's font directory;
+- notch geometry: flat top against the screen edge, rounded bottom, 190 × 32 at rest;
+- their island's anatomy: a leading visual (progress ring, thumbnail, or glyph), a 15 pt semibold
+  title, a 12 pt detail, a monospaced percentage on the right;
+- progress ring with a 15 % track, a bone arc, a light dot at its head, and an indeterminate quarter
+  turn when the total size is unknown;
+- success: a bone disc with an ink check that draws itself, or the preview of the file that just
+  landed, decoded off the drawing thread;
+- two quiet buttons in the result: open the file, or its folder; the result stays eight seconds, and
+  the countdown pauses while the pointer is on the pill;
+- the system's springs: island 0.42 s / 0.78, content 0.38 s / 0.86;
+- respects "reduce motion" when GTK asks for it;
+- Pango layouts cached per state, so nothing is rebuilt at 120 frames a second.
 
-Deux bogues ont été trouvés et corrigés en route, tous les deux visibles à l'usage :
+Two bugs were found and fixed along the way, both visible in use:
 
-1. la surface gardait sa dernière image quand l'îlot se cachait, le compositeur n'effaçant rien : la
-   fenêtre est maintenant **démontée** quand il n'y a rien à montrer ;
-2. les événements partaient de sockets différents et pouvaient arriver dans le désordre, un « réception »
-   après un « Enregistré » laissant la carte bloquée : un socket unique garantit l'ordre.
+1. the surface kept its last frame when the island hid, because the compositor clears nothing: the
+   window is now **unmapped** when there is nothing to show;
+2. events were sent from different sockets and could arrive out of order, a "receiving" after a
+   "saved" leaving the card stuck: a single socket guarantees the order.
 
-## 7. Barre d'état et fenêtre
+## 7. Status bar and window
 
-L'icône est un StatusNotifierItem (`ksni`) avec menu : ouvrir, envoyer le presse-papiers, accepter ou
-refuser un appairage, quitter. La fenêtre est en GTK4 et parle au service par le socket de contrôle, ce
-qui permet de la fermer sans arrêter le service.
+The icon is a StatusNotifierItem (`ksni`) with a menu: open, send the clipboard, accept or refuse a
+pairing, quit. The window is GTK4 and talks to the service through the control socket, so it can be
+closed without stopping the service.
 
-Le service tourne en `systemd --user`, avec `Restart=always` et démarrage à la session.
+The service runs under `systemd --user`, with `Restart=always`, and starts with the session.
 
-## 8. Le réseau, et l'isolation du Wi-Fi d'école
+## 8. The network, and school Wi-Fi isolation
 
-Sur un réseau normal, la découverte DNS-SD suffit. Sur le Wi-Fi de l'école, l'isolation des clients
-empêche deux appareils de se joindre, même s'ils se voient en mDNS. Quatre contournements ont été mis
-en place, dans cet ordre de simplicité :
+On a normal network, DNS-SD discovery is enough. On the school Wi-Fi, client isolation prevents two
+devices from reaching each other, even when they see each other over mDNS. Four workarounds were put
+in place, in order of simplicity:
 
-1. **USB** : `adb reverse tcp:47913 tcp:47913`, puis `127.0.0.1:47913` dans l'application ;
-2. **partage de connexion** du téléphone, où la découverte remarche ;
-3. **relais SSH** : le PC ouvre une connexion sortante vers le serveur et y publie le port, `socat`
-   l'expose ; le téléphone se connecte à l'adresse du serveur, sans rien installer ;
-4. **concentrateur WireGuard** sur le serveur, avec un sous-réseau privé `10.66.0.0/24` et un QR code
-   pour le téléphone.
+1. **USB**: `adb reverse tcp:47913 tcp:47913`, then `127.0.0.1:47913` in the app;
+2. **connection sharing** from the phone, where discovery works again;
+3. **SSH relay**: the computer opens an outgoing connection to the server and publishes the port,
+   `socat` exposes it; the phone connects to the server's address, with nothing to install;
+4. **WireGuard hub** on the server, with a private `10.66.0.0/24` subnet and a QR code for the phone.
 
-Le relais SSH a été retenu : aucune application à installer sur le téléphone, et le contenu reste
-chiffré de bout en bout, le serveur ne voyant que du chiffrement TapDrop.
+The SSH relay was kept: no app to install on the phone, and the content stays end-to-end encrypted,
+the server only ever sees TapDrop's ciphertext.
 
-## 9. Décisions et compromis
+## 9. Decisions and trade-offs
 
-| Décision | Raison |
+| Decision | Reason |
 |---|---|
-| proximité comme déclencheur | seule source rapide et fiable au contact |
-| lumière comme preuve | une main ne peut pas éclairer un écran |
-| caméra plutôt que capteur de lumière | 30 Hz contre 1 Hz |
-| exposition fixe | l'exposition automatique annule le contraste |
-| appairage automatique désactivé en public | le port du relais est exposé |
-| socket unique vers l'îlot | l'ordre des événements compte |
-| surface démontée au repos | aucune image fantôme possible |
-| largeur au contenu | plus de troncature, mouvement plus juste |
+| proximity as the trigger | the only fast, reliable source at contact |
+| light as the proof | a hand cannot light up a screen |
+| camera instead of the light sensor | 30 Hz instead of 1 Hz |
+| fixed exposure | auto-exposure cancels the contrast |
+| automatic pairing off on a public port | the relay's port is exposed |
+| a single socket to the island | the order of events matters |
+| surface unmapped when idle | no ghost frame is possible |
+| width measured on the content | no truncation, a truer motion |
 
-## 10. Ce qui reste
+## 10. What remains
 
-- reconstruire l'APK avec le nettoyage d'URL et des textes « PC » plutôt que « Mac » ;
-- Samsung Internet n'expose que le domaine : rien à faire côté hôte, le partage reste la solution
-  exacte pour ce navigateur ;
-- vrai flou de verre impossible pour l'instant : l'effet KWin maintenu s'arrête à Plasma 6.4, cette
-  machine est en 6.8.3. Le protocole `org_kde_kwin_blur` reste une piste, au prix d'une intégration
-  Wayland fragile ;
-- icône et textes de l'application Android dans la langue de l'utilisateur.
+- explicit calibration (three holds, median, Reset), which the protocol describes;
+- porting the project's own checks (`keyCheck`, `otpCheck`, `timeCheck`) to the Rust side;
+- a Linux release artifact in the release workflow;
+- real glass blur, blocked for now: the maintained KWin effect stops at Plasma 6.4, this release is
+  6.8;
+- an APK with "PC" wording and cleaned URLs on the phone side.
 
-## 11. Chiffres retenus
+## 11. Numbers worth keeping
 
 ```
-capteur de lumière : ~1 mesure / s, pièce 400 lx, écran blanc 1057 lx, écran noir 15-44 lx
-webcam             : 30 images / s, pièce 48, écran blanc 173, écran noir 2,5, exposition 80
-proximité          : 20 Hz, réaction 40-100 ms, 10000 = aucun retour
-tap complet        : 240-280 ms
-seuil appris       : 1 042 lux (0,45 × niveau de contact)
-affichage          : 120 Hz, échelle 1,65
+light sensor : ~1 reading / s, room 400 lx, white screen 1057 lx, black screen 15-44 lx
+webcam       : 30 frames / s, room 48, white screen 173, black screen 2.5, exposure 80
+proximity    : 20 Hz, reaction 40-100 ms, 10000 = no return
+full tap     : 240-280 ms
+learned level: 1 042 lux (0.45 × contact level)
+display      : 120 Hz, scale 1.65
 ```
