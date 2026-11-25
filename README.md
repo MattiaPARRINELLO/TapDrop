@@ -335,6 +335,19 @@ cd mac && ./scripts/build-app.sh --no-install
 
 `build-app.sh` signs with your Apple Development identity if you have one, so macOS keeps TapDrop's permissions across rebuilds; otherwise ad hoc. It bundles the Android app when `android/app/build/outputs/apk/release/app-release.apk` exists, so build that first if you want the Mac's setup page to offer it.
 
+### Linux host
+
+Rust, GTK4, Wayland layer shell, V4L2, IIO. The Linux half of TapDrop, written from the protocol in
+`PROTOCOL.md`; the Android app above works unchanged.
+
+```sh
+cd linux && cargo build --release
+```
+
+It pairs, receives files and clipboard both ways, draws the island, and taps with the camera. See
+[`linux/README.md`](linux/README.md) for installation and [`docs/LINUX_PORT.md`](docs/LINUX_PORT.md)
+for how it was built and what the hardware allowed.
+
 ### Android app
 
 Kotlin, Jetpack Compose, Material 3 Expressive, Coil, Haze.
@@ -440,6 +453,7 @@ mac/                 Menu bar app: server, notch sensor and light key, island, p
   Sources/TapDrop/   NotchSensor · WatchHub (light key rounds) · Server · Island · Panel · Settings* · Setup* · Updater
   scripts/           build-app.sh
   dmg/               The installer window (dmgbuild settings and background)
+linux/               Linux host: protocol, pairing, island, tray, GTK window, camera light key
 android/
   app/               Android app: accessibility tap service, overlays, share sheet, settings, pairing, updater
   core/              Shared protocol, crypto and client in pure Kotlin, with the JVM checks
